@@ -12,7 +12,8 @@ Run `local/start-phone-test.ps1` to restart the computer bridge and USB forwardi
 
 Build: `android/build.ps1` uses JDK 17, Android platform 36 and build tools 36.0.0 under `%LOCALAPPDATA%/TankTactics`. Output: `android/build/TankTactics-debug.apk`. This is a debug WebView test APK, not a release package. No model is downloaded to the phone. It requests only Internet access, with cleartext restricted to localhost.
 
-Combat now uses a seeded 60 Hz simulation, unit-specific magazines, 2.4-second magazine reloads, turret traverse, projectile segment hits, cover and command gates. `node local/combat.test.mjs` checks replay consistency and materially different tactic behavior. Model plans are validated and numeric values are bounded. The preview lets testers inspect model interpretation before deployment; this small model can still misunderstand complex instructions.
+Combat now uses a seeded 60 Hz simulation, unit-specific magazines, 2.4-second magazine reloads, turret traverse, projectile segment hits, cover and command gates. 
+ode local/combat.test.mjs` checks replay consistency and materially different tactic behavior. Model plans are validated and numeric values are bounded. The preview lets testers inspect model interpretation before deployment; this small model can still misunderstand complex instructions.
 
 ## Game loop
 
@@ -47,3 +48,8 @@ The board contains the milestone and feature backlog, including 36 distinct cand
 Six playable types: tank, infantry, helicopter, rocket soldier, artillery and sniper. Open **Squad & combine** to select a unit for an arena duel or combine three copies of the same type and star tier. Maximum tier is three stars. Two stars unlock Cover and Dodge; three stars unlock Precision aim and Retreat. Each upgrade increases base health and damage by 40% and speed by 8% of the one-star base. These are available actions: instructions still determine when they are used. The model receives the unit type and enabled commands, and the game enforces command gates.
 
 Victory rewards include one-star recruits as alternatives to instruction buffs. Collection capacity is 15. Starter pack: one of each type plus two extra infantry, allowing an immediate first combine. Collections and per-unit programs persist on the device across app restarts and new runs. A full collection must take a tactic reward and combine before recruiting more. Battles currently deploy one selected unit at a time; simultaneous squad combat and sea units remain planned.
+
+## Level rewards and store
+Each victory grants two independent choices: one unit reward (recruit a teammate or promote an owned unit of that type by one star), plus one instruction and next-level buff. Both must be claimed before continuing. Three-copy combining remains available as another upgrade route. Promotions cap at three stars.
+
+The team starts with 8 slots and 100 credits. A victory earns 50 + 10 × current level credits. Additional slots cost 100 credits, increasing by 50 per purchased slot, up to 15. Existing collections keep enough slots for their owned units. Credits, slots and reserves persist on the device. Full-team recruits enter reserve and can be added through the store after buying a slot or combining units. No real-money purchases.

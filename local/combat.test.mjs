@@ -16,8 +16,15 @@ function simulate(instruction,modelPlan=null){
  roster.push(newUnit('infantry',2),newUnit('infantry',2));combineUnits('infantry',2);if(selectedUnit().tier!==3||!commands.has('retreat')||!commands.has('perch'))throw Error('Third star unlocks incorrect');
  for(const type of Object.keys(unitTypes)){activateUnit(roster.find(u=>u.type===type).id);if(player.stats.mag!==unitTypes[type].mag||player.type!==type)throw Error('Unit combat profile mismatch');}
  activateUnit(roster.find(u=>u.type==='tank').id);
- finish(true);const recruitCount=roster.length;chooseReward({unitType:'sniper'});if(roster.length!==recruitCount+1||round!==2||nextBuff!==null)throw Error('Recruit reward failed');
- while(roster.length<15)roster.push(newUnit('sniper'));const full=roster.length;chooseReward({unitType:'tank'});if(roster.length!==full)throw Error('Collection limit failed');
+ mode='running';finish(true);const recruitCount=roster.length;chooseReward({unitType:'sniper',action:'add'});if(roster.length!==recruitCount+1||round!==1||nextBuff!==null)throw Error('Recruit reward failed');
+ chooseReward({unitType:'sniper',action:'add'});if(roster.length!==recruitCount+1)throw Error('Duplicate reward claim');
+ completeLevelRewards();if(round!==1)throw Error('Must claim both reward pools');
+ chooseReward(rewardOptions[0]);completeLevelRewards();if(round!==2||nextBuff!==rewardOptions[0])throw Error('Independent tactic pool failed');
+ const credits=economy.credits,cost=slotCost(),slots=economy.slots;buySlot();if(economy.slots!==slots+1||economy.credits!==credits-cost)throw Error('Slot purchase failed');
+ while(roster.length<economy.slots)roster.push(newUnit('sniper'));mode='running';finish(true);const full=roster.length;chooseReward({unitType:'tank',action:'add'});if(roster.length!==full||economy.reserve.tank!==1)throw Error('Full team must reserve reward');
+ chooseReward(rewardOptions[1]);completeLevelRewards();combineUnits('sniper',1);claimReserve('tank');if(economy.reserve.tank!==0||roster.length!==full-1)throw Error('Reserve claim failed');
+ mode='running';finish(true);const target=roster.find(u=>u.type==='tank'),owned=roster.length;chooseReward({unitType:'tank',action:'upgrade',unitId:target.id});if(target.tier!==2||roster.length!==owned)throw Error('Direct upgrade reward failed');
+ chooseReward(rewardOptions[2]);completeLevelRewards();
  round=1;mode='ready';wins=0;
  `,context);
  document.getElementById('prompt').value=instruction;vm.runInContext('preview()',context);
