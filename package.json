@@ -1,0 +1,26 @@
+{
+  "name": "multiplayer-tank-game",
+  "version": "1.0.0",
+  "description": "An Android multiplayer roguelite concept inspired by Robocode. The companion project board is in `dist/index.html`, and a playable phone-friendly browser prototype is in `dist/play.html`.",
+  "main": "index.js",
+  "scripts": {
+    "build": "node local/build-cloud.mjs",
+    "test": "node local/combat.test.mjs",
+    "test:matches": "node local/matches.test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://git.chatgpt-team.site/491b670b-b507-4006-96f6-8dee3fe052d2/appgprj_6ab70b1f4348819195fa2efe2847912c.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "drizzle-kit": "^0.31.11",
+    "esbuild": "^0.28.2"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.3"
+  }
+}

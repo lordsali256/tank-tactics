@@ -1,55 +1,31 @@
 # Tank Tactics: Prompt Arena
 
-An Android multiplayer roguelite concept inspired by Robocode. The companion project board is in `dist/index.html`, and a playable phone-friendly browser prototype is in `dist/play.html`.
+A playable Android and browser combined-arms roguelite inspired by Robocode.
 
-The prototype is an early 1-versus-AI mixed-unit test. The Android USB/local build compiles instructions with **qwen3.5:4b in computer-local Ollama**. The hosted browser uses a rule parser fallback. Multiplayer, phone-native model inference, and 15-unit mixed squads remain planned.
+## Play
 
-## Test on the connected Android phone
+Open Tank Tactics on the phone, write an instruction, tap **Compile with local AI**, review the interpreted plan, then deploy. Use **Squad & combine** to select, bench or upgrade units; **Armory** for equipment; **Store** to buy team slots. Each campaign victory grants both a recruit/promotion and an instruction with a next-round buff. Three defeats end the run; collection, equipment and currencies remain.
 
-The installed app is **Tank Tactics**. Keep the phone connected by USB for AI testing. Write an instruction, tap **Compile with local AI**, review its range, thresholds and firing policy, then tap **Deploy unit**. Compilation occurs before battle; the model never runs arbitrary code or controls the simulation directly. After editing an instruction or accepting a reward, compile again.
+- Up to 15 simultaneous units: tanks, infantry, helicopters, rocket soldiers, artillery, snipers and coastal boats.
+- Infantry base speed reduced from 125 to 80.
+- Four maps, volcanic hazards, water-only boats, pickups, 39 distinct displayed stats and 30 equipment choices.
+- Three matching units combine, unlocking more commands at each star tier. Commands are separate from natural-language instructions.
+- Drag equipment onto weapon/armor/utility slots or tap Equip. Retire a unit for at most five cosmetic tokens; four color schemes are available.
+- Latest-battle replay, collection import/export, and optional projected 3D tactical view. The 3D view uses simple procedural blocks, not a Unity production renderer.
+- Invite multiplayer uses an authoritative server and persistent match database. Two players submit squads, share a code, reconnect with saved session tokens and receive server-confirmed results. These test matches give no campaign rewards. Collections and imported progression are device-local, so this is not a ranked economy.
 
-Run `local/start-phone-test.ps1` to restart the computer bridge and USB forwarding after reconnecting. Requires Node, Ollama running on localhost:11434 with qwen3.5:4b installed, and Android platform tools at `%LOCALAPPDATA%/TankTactics/tools/platform-tools`. The bridge listens only on computer loopback at port 8878 and rejects foreign browser origins. Disconnecting USB makes new compilations unavailable; the bundled game can still run using its rule parser.
+## Free local models
 
-Build: `android/build.ps1` uses JDK 17, Android platform 36 and build tools 36.0.0 under `%LOCALAPPDATA%/TankTactics`. Output: `android/build/TankTactics-debug.apk`. This is a debug WebView test APK, not a release package. No model is downloaded to the phone. It requests only Internet access, with cleartext restricted to localhost.
+Android uses **Qwen2.5-0.5B-Instruct Q4_K_M** through native llama.cpp, CPU only. The 491,400,032-byte model is installed on the test Pixel. Other Android installations offer a verified download button. SHA-256: `74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db`.
 
-Combat now uses a seeded 60 Hz simulation, unit-specific magazines, 2.4-second magazine reloads, turret traverse, projectile segment hits, cover and command gates. 
-ode local/combat.test.mjs` checks replay consistency and materially different tactic behavior. Model plans are validated and numeric values are bounded. The preview lets testers inspect model interpretation before deployment; this small model can still misunderstand complex instructions.
+Model source: https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF (Apache 2.0). Native inference uses four CPU threads, 2048 context tokens and at most 230 generated tokens. It runs before combat, not every frame. The model can misinterpret instructions; inspect the plan before deploying. Local AI also generates a reward tactic when available. Preset tactics and a clearly labeled rule parser remain usable without a model.
 
-## Game loop
+Computer testing optionally uses **qwen3.5:4b** in Ollama via the loopback bridge on port 8878. `local/start-phone-test.ps1` starts the bridge and USB forwarding. The hosted site does not send prompts to ChatGPT or a hosted AI provider. Its multiplayer accessibility follows the site's existing private sharing settings.
 
-1. Assemble a squad of up to 15 programmable units. Planned types include infantry, tanks, helicopters, and boats for sea maps.
-2. Give each unit a natural-language tactical instruction and a set of program commands. Radar, Gun, Drive, Duck, Cover, and Sniper Perch are commands, separate from the instruction text.
-3. Test the squad against basic computer controlled units, then enter multiplayer arena runs.
-4. Win rounds to earn new instructions and temporary buffs. Lose a run and restart with the permanent unlocks allowed by the progression rules.
+## Build and test
 
-The planned local model will generate structured behavior plans before a match. The deterministic combat simulation will execute only validated actions, keeping multiplayer matches fair and replayable. The current tank prototype uses a local rule parser and shows its interpretation and live actions during battle.
+`npm run build` generates a Cloudflare-compatible bundled Worker and client assets. `node local/combat.test.mjs`, `node local/matches.test.mjs` and `node local/cloud.test.mjs` verify deterministic combat, command tiers, separate rewards, slot purchases, gear effects, import validation, retirement caps, lives and match/session/database rules. Drizzle schema migrations live in `drizzle/`; append migrations rather than changing deployed history.
 
-## First playable milestone
+`android/build.ps1` requires JDK 17, Android platform/build-tools 36 and the native library at `android/build/native/libtank_ai.so`. The output is `android/build/TankTactics-debug.apk`, a debug-signed ARM64 test APK. It bundles the game and library; model data is stored in private app files separately and survives app updates. Internet permission supports model download and USB tests.
 
-- Android 2D top-down arena with one programmable tank versus a basic AI tank.
-- Show the interpreted instruction and actual tank actions during combat.
-- Program tank actions through commands rather than equipment-style tactical items.
-- Show the active tank stats in the arena and offer an instruction plus one-round buff after victory.
-- Computer-local model compilation is available for USB testing. Generated reward instructions and phone-native inference remain future work.
-- Expand to squads, multiplayer, and roguelite progression after the single-tank loop works.
-
-## Future scope
-
-- 3D presentation, potentially in Unity.
-- Infantry, helicopters, and boats with unit-specific programming commands and sea maps.
-- Drag-and-drop tank inventory slots and a larger weapon and armor catalog.
-- Three matching units of the same type and tier can merge into an upgraded unit.
-- Retirement cosmetics currency based on at most five wins per tank.
-
-The board contains the milestone and feature backlog, including 36 distinct candidate stats and implementation notes.
-
-## Collection and upgrades
-
-Six playable types: tank, infantry, helicopter, rocket soldier, artillery and sniper. Open **Squad & combine** to select a unit for an arena duel or combine three copies of the same type and star tier. Maximum tier is three stars. Two stars unlock Cover and Dodge; three stars unlock Precision aim and Retreat. Each upgrade increases base health and damage by 40% and speed by 8% of the one-star base. These are available actions: instructions still determine when they are used. The model receives the unit type and enabled commands, and the game enforces command gates.
-
-Victory rewards include one-star recruits as alternatives to instruction buffs. Collection capacity is 15. Starter pack: one of each type plus two extra infantry, allowing an immediate first combine. Collections and per-unit programs persist on the device across app restarts and new runs. A full collection must take a tactic reward and combine before recruiting more. Battles currently deploy one selected unit at a time; simultaneous squad combat and sea units remain planned.
-
-## Level rewards and store
-Each victory grants two independent choices: one unit reward (recruit a teammate or promote an owned unit of that type by one star), plus one instruction and next-level buff. Both must be claimed before continuing. Three-copy combining remains available as another upgrade route. Promotions cap at three stars.
-
-The team starts with 8 slots and 100 credits. A victory earns 50 + 10 × current level credits. Additional slots cost 100 credits, increasing by 50 per purchased slot, up to 15. Existing collections keep enough slots for their owned units. Credits, slots and reserves persist on the device. Full-team recruits enter reserve and can be added through the store after buying a slot or combining units. No real-money purchases.
+Native dependencies under `%LOCALAPPDATA%/TankTactics`: NDK 27.2.12479018, CMake 3.22.1, llama.cpp commit `95887577ab5fead779581a7030a83c7752ff3234`. Configure `android/native` with the Android toolchain, ARM64 ABI, Android 26, `ANDROID_STL=c++_static`, `ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON`, and `LLAMA_SOURCE` pointing at that checkout. Build target `tank_ai`. The shared library and APK use 16 KB alignment. Upstream license notices are included under `android/native` and in APK assets.

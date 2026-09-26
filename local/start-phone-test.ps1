@@ -1,6 +1,6 @@
 $ErrorActionPreference='Stop'
 $taskRoot=Split-Path $PSScriptRoot -Parent
-$adb=Join-Path $env:LOCALAPPDATA 'TankTactics/tools/platform-tools/adb.exe'
+$adb=Join-Path $env:LOCALAPPDATA 'TankTactics/tools/stable-adb/platform-tools/adb.exe'
 if(!(Test-Path $adb)){throw 'Android platform tools are missing.'}
 try {Invoke-RestMethod http://127.0.0.1:8878/api/status -TimeoutSec 3 | Out-Null} catch {
  Start-Process -FilePath (Get-Command node).Source -ArgumentList @('local/bridge.mjs') -WorkingDirectory $taskRoot -WindowStyle Hidden -RedirectStandardOutput "$PSScriptRoot/bridge.log" -RedirectStandardError "$PSScriptRoot/bridge-error.log"

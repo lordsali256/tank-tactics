@@ -6,7 +6,7 @@ function simulate(instruction,modelPlan=null){
  const elements=new Map();const element=()=>({textContent:'',value:'',style:{},children:[],classList:{remove(){},toggle(){}},replaceChildren(){this.children=[]},append(...nodes){this.children.push(...nodes)},setAttribute(){},addEventListener(){},showModal(){},close(){},querySelector(){return {focus(){}}}});
  const document={getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id)},createElement:element,querySelectorAll(){return []}};
  document.getElementById('arena').width=920;document.getElementById('arena').height=560;document.getElementById('arena').getContext=()=>({});document.getElementById('prompt').value=instruction;
- const context=vm.createContext({document,performance:{now:()=>0},requestAnimationFrame(){},AbortSignal,fetch:async()=>{throw Error('test')},Math,console});vm.runInContext(script,context);
+ const context=vm.createContext({document,localStorage:{getItem:()=>null,setItem(){},removeItem(){}},window:{},setTimeout,clearTimeout,performance:{now:()=>0},requestAnimationFrame(){},AbortSignal,fetch:async()=>{throw Error('test')},Math,console,confirm:()=>true});vm.runInContext(script,context);
  document.getElementById('prompt').value=instruction;vm.runInContext('preview()',context);
  vm.runInContext(`
  activateUnit(roster.find(u=>u.type==='infantry').id);const before=roster.length;combineUnits('infantry',1);
@@ -14,7 +14,7 @@ function simulate(instruction,modelPlan=null){
  const upgrade=roster.find(u=>u.type==='infantry');if(!unlocked(upgrade).includes('duck')||unlocked(upgrade).includes('perch')||!commands.has('duck')||selectedUnit().id!==upgrade.id)throw Error('Tier commands incorrect');
  const count=roster.length;combineUnits('infantry',2);if(roster.length!==count)throw Error('Insufficient copies must not combine');
  roster.push(newUnit('infantry',2),newUnit('infantry',2));combineUnits('infantry',2);if(selectedUnit().tier!==3||!commands.has('retreat')||!commands.has('perch'))throw Error('Third star unlocks incorrect');
- for(const type of Object.keys(unitTypes)){activateUnit(roster.find(u=>u.type===type).id);if(player.stats.mag!==unitTypes[type].mag||player.type!==type)throw Error('Unit combat profile mismatch');}
+ for(const type of Object.keys(unitTypes)){if(!roster.some(u=>u.type===type))roster.push(newUnit(type));campaign.map=type==='boat'?'coast':'urban';activateUnit(roster.find(u=>u.type===type).id);if(player.stats.mag!==unitTypes[type].mag||player.type!==type)throw Error('Unit combat profile mismatch');}
  activateUnit(roster.find(u=>u.type==='tank').id);
  mode='running';finish(true);const recruitCount=roster.length;chooseReward({unitType:'sniper',action:'add'});if(roster.length!==recruitCount+1||round!==1||nextBuff!==null)throw Error('Recruit reward failed');
  chooseReward({unitType:'sniper',action:'add'});if(roster.length!==recruitCount+1)throw Error('Duplicate reward claim');
@@ -26,15 +26,20 @@ function simulate(instruction,modelPlan=null){
  mode='running';finish(true);const target=roster.find(u=>u.type==='tank'),owned=roster.length;chooseReward({unitType:'tank',action:'upgrade',unitId:target.id});if(target.tier!==2||roster.length!==owned)throw Error('Direct upgrade reward failed');
  chooseReward(rewardOptions[2]);completeLevelRewards();
  round=1;mode='ready';wins=0;
+ const gearUnit=selectedUnit(),baseDamage=unitStats().damage;economy.credits=1000;buyGear('weapon-0');equipGear('weapon-0','weapon');if(unitStats().damage<=baseDamage)throw Error('Gear must change combat stats');renderStats();if($('statList').children.length!==39)throw Error('Expected 39 distinct stats');
+ const original=roster.length;let rejected=false;try{safeImportedUnits({version:1,units:[{type:'invalid',tier:1}]})}catch{rejected=true}if(!rejected)throw Error('Invalid imports accepted');gearUnit.wins=99;const coins=campaign.cosmeticCoins;retireUnit();if(campaign.cosmeticCoins!==coins+5||roster.length!==original-1)throw Error('Retirement cap failed');
+ for(let i=0;i<3;i++){mode='running';finish(false)}if(campaign.lives!==0)throw Error('Run must end after three defeats');resetRun();if(campaign.lives!==3)throw Error('New run must restore lives');
+ 
  `,context);
  document.getElementById('prompt').value=instruction;vm.runInContext('preview()',context);
  if(modelPlan)vm.runInContext('compiledPlan='+JSON.stringify(modelPlan)+';compiledText=$("prompt").value;',context);
- vm.runInContext('deploy();for(let n=0;n<2701&&mode==="running";n++)update(1/60);',context);
- return JSON.parse(vm.runInContext('JSON.stringify({mode,hp:player.hp,enemyHp:enemy.hp,x:player.x,y:player.y,ammo:player.ammo,plan})',context));
+ vm.runInContext('deploy();for(let n=0;n<3601&&mode==="running";n++)update(1/60);',context);
+ return JSON.parse(vm.runInContext('JSON.stringify({events:damageEvents.length,mode,hp:player.hp,enemyHp:enemy.hp,x:player.x,y:player.y,ammo:player.ammo,plan})',context));
 }
 const rush=simulate('Rush the enemy and fire aggressively.'),sniper=simulate('Keep distance and aim like a sniper.');
 assert.deepEqual(rush,simulate('Rush the enemy and fire aggressively.'),'same seed must replay the same battle');
-assert.notEqual(rush.plan.preferred,sniper.plan.preferred);assert.ok(rush.enemyHp<140||sniper.enemyHp<140,'combat must deal damage');
+assert.notEqual(rush.plan.preferred,sniper.plan.preferred);assert.ok(rush.events>0||sniper.events>0,'combat must deal damage');
 const custom=simulate('Unusual tactics',{style:'balanced',preferred:400,cover:true,coverBelow:.8,evade:true,retreat:true,retreatBelow:.3,firePolicy:'inRange',explanation:'test'});
 assert.equal(custom.plan.preferred,400);assert.equal(custom.plan.retreatBelow,.3);assert.ok(Number.isFinite(custom.x));
 console.log(JSON.stringify({rush,sniper,custom},null,2));
+
