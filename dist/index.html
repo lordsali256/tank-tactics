@@ -190,7 +190,7 @@ const seed=[
  {id:"TT-17",title:"Expanded weapons and armor",description:"Build a broad catalog with clear tradeoffs, rarity, and visual identity.",phase:"Future",priority:"Medium",status:"later"},
  {id:"TT-18",title:"Three-of-a-kind upgrades",description:"Collect three units of the same type and tier to combine them into an upgraded unit.",phase:"Future",priority:"Medium",status:"later"},
  {id:"TT-19",title:"Retirement cosmetics currency",description:"Retire a tank for cosmetics currency. Credit at most five wins per tank, with a clear preview before retirement.",phase:"Future",priority:"Low",status:"later"},
- {id:"TT-20",title:"Playable browser combat prototype",description:"Open a phone-friendly arena, program one tank with tactical instructions, fight a basic AI tank, and choose a tactic reward after victory. Uses a local rule parser while on-device LLM work remains planned.",phase:"First playable",priority:"High",status:"done"}
+ {id:"TT-PROTO",title:"Playable browser combat prototype",description:"Open a phone-friendly arena, program one tank with tactical instructions, fight a basic AI tank, and choose a tactic reward after victory. Uses a local rule parser while on-device LLM work remains planned.",phase:"First playable",priority:"High",status:"done"}
 ];
 const stats=[
  ["Damage","Offense","Base health lost on a direct hit."],["Crit chance","Offense","Chance that a hit becomes critical."],["Crit multiplier","Offense","Extra damage applied to a critical hit."],["Armor penetration","Offense","Armor bypassed by a hit."],["Projectile speed","Offense","Travel speed of fired projectiles."],["Explosion radius","Offense","Area reached by explosive impact."],["Aim accuracy","Offense","Spread around the intended aim point."],["Splash falloff","Offense","How quickly blast damage drops with distance."],
@@ -210,7 +210,7 @@ const milestones=[
 ];
 const key="tank-tactics-board-v1";
 let tasks=loadTasks(),editingId=null,activeStat="All";
-function loadTasks(){try{const v=JSON.parse(localStorage.getItem(key));if(Array.isArray(v)&&v.every(validTask))return v}catch{}return seed.map(x=>({...x}))}
+function loadTasks(){try{const v=JSON.parse(localStorage.getItem(key));if(Array.isArray(v)&&v.every(validTask)){const migration=key+"-prototype-added";if(!localStorage.getItem(migration)){if(!v.some(t=>t.id==="TT-PROTO"))v.push({...seed.find(t=>t.id==="TT-PROTO")});localStorage.setItem(key,JSON.stringify(v));localStorage.setItem(migration,"1")}return v}}catch{}return seed.map(x=>({...x}))}
 function validTask(t){return t&&typeof t.id==="string"&&typeof t.title==="string"&&typeof t.description==="string"&&["now","next","later","done"].includes(t.status)&&["Foundation","First playable","Squad & online","Roguelite","Future"].includes(t.phase)&&["High","Medium","Low"].includes(t.priority)}
 function save(){localStorage.setItem(key,JSON.stringify(tasks));render()}
 function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e}
