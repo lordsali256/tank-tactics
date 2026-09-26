@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101813">
+  <meta name="description" content="Project board for Tank Tactics: Prompt Arena, an Android multiplayer tank roguelite.">
+  <title>Tank Tactics · Project Board</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101813'/%3E%3Cpath d='M12 35h40v12H12zM23 25h22v10H23zM32 18h20v5H32z' fill='%23d7fb75'/%3E%3Ccircle cx='21' cy='48' r='4' fill='%23ee9b5b'/%3E%3Ccircle cx='43' cy='48' r='4' fill='%23ee9b5b'/%3E%3C/svg%3E">
+  <style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e9efe4;background:#0e1510;font-size:16px}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh}
+    button,input,select,textarea{font:inherit}
+    button{cursor:pointer}
+    button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #d7fb75;outline-offset:2px}
+    .app{display:grid;grid-template-columns:224px minmax(0,1fr);min-height:100vh}
+    .sidebar{background:#121d16;border-right:1px solid #2c3b2f;padding:26px 17px;display:flex;flex-direction:column;gap:28px}
+    .brand{display:flex;align-items:center;gap:12px;padding:0 10px}
+    .brand-mark{width:40px;height:40px;border-radius:12px;background:#d7fb75;color:#17220e;display:grid;place-items:center;font-size:22px;font-weight:900;box-shadow:0 0 25px #d7fb7530}
+    .brand-name{font-size:14px;font-weight:800;letter-spacing:.06em;line-height:1.15;text-transform:uppercase}
+    .brand-name span{display:block;color:#8d9d8e;font-size:11px;font-weight:600;letter-spacing:.16em;margin-top:4px}
+    .nav{display:grid;gap:5px}
+    .nav button{width:100%;background:none;border:0;color:#a9b9aa;text-align:left;border-radius:10px;padding:12px 13px;display:flex;align-items:center;gap:12px;font-weight:650}
+    .nav button.active,.nav button:hover{background:#263729;color:#e9ffe1}
+    .nav .icon{font-size:18px;width:22px;text-align:center}
+    .sidebar-note{margin-top:auto;background:#1c2a20;border:1px solid #344635;border-radius:14px;padding:15px}
+    .sidebar-note b{display:block;font-size:13px;color:#d7fb75;letter-spacing:.1em;text-transform:uppercase}
+    .sidebar-note p{font-size:13px;color:#b0bfb0;line-height:1.5;margin:9px 0 0}
+    main{min-width:0;padding:30px clamp(18px,3vw,48px) 50px}
+    .topline{display:flex;justify-content:space-between;align-items:center;gap:16px;color:#8f9f90;font-size:13px;text-transform:uppercase;letter-spacing:.15em;font-weight:700}
+    .topline strong{color:#d7fb75}
+    .top-actions{display:flex;gap:8px}
+    .ghost,.primary,.chip,.mini,.icon-button{border:1px solid #3a4c3c;border-radius:10px;background:#1c2b20;color:#e8f0e5;padding:10px 14px;font-weight:700}
+    .ghost:hover,.chip:hover,.mini:hover,.icon-button:hover{border-color:#8cb05c;background:#27392a}
+    .primary{background:#d7fb75;border-color:#d7fb75;color:#18220d}
+    .primary:hover{background:#e8ffab}
+    .hero{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:24px;align-items:stretch;margin:29px 0 28px}
+    h1{font-size:clamp(32px,4vw,56px);letter-spacing:-.055em;line-height:1.05;margin:0 0 12px}
+    h1 em{color:#d7fb75;font-style:normal}
+    .intro{font-size:16px;line-height:1.55;color:#aab9aa;max-width:700px;margin:0}
+    .hero-copy{align-self:center}
+    .hero-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+    .hero-tags span{border:1px solid #344634;background:#18251b;color:#bcd3b1;border-radius:50px;padding:6px 10px;font-size:12px;font-weight:750;letter-spacing:.05em}
+    .radar{min-height:193px;border:1px solid #365038;border-radius:18px;background:radial-gradient(circle at center,#2d4d2b 0,#182c1e 38%,#132119 68%,#17271b 100%);position:relative;overflow:hidden;display:grid;place-items:center}
+    .radar:before,.radar:after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border:1px solid #85ab6850;border-radius:50%;width:170px;height:170px}
+    .radar:after{width:110px;height:110px}
+    .radar .cross-x,.radar .cross-y{position:absolute;background:#85ab6833}
+    .radar .cross-x{height:1px;width:100%;top:50%}.radar .cross-y{width:1px;height:100%;left:50%}
+    .sweep{position:absolute;width:51%;height:51%;right:0;top:0;background:linear-gradient(43deg,transparent 48%,#d7fb7525 100%);transform-origin:left bottom;animation:sweep 8s linear infinite}
+    @keyframes sweep{to{transform:rotate(360deg)}}
+    .radar-core{z-index:1;width:82px;height:82px;border-radius:50%;background:#d7fb75;color:#15230f;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 0 35px #d7fb7560}
+    .radar-core strong{font-size:30px;line-height:1}.radar-core span{font-size:10px;text-transform:uppercase;font-weight:800;letter-spacing:.1em}
+    .radar-label{position:absolute;bottom:14px;left:15px;font-size:11px;color:#b9d2ae;font-weight:800;letter-spacing:.15em}
+    .summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:24px}
+    .metric{background:#17231a;border:1px solid #304333;border-radius:14px;padding:17px 18px;min-height:99px}
+    .metric small{display:block;color:#95a995;font-size:12px;text-transform:uppercase;letter-spacing:.1em;font-weight:750}
+    .metric strong{display:block;font-size:29px;margin-top:7px;line-height:1;color:#f0f6ec}
+    .metric strong.accent{color:#d7fb75}
+    .view{display:none}.view.active{display:block}
+    .section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:15px;margin:24px 0 16px}
+    h2{font-size:25px;letter-spacing:-.03em;margin:0}
+    .section-head p{color:#9dab9c;font-size:14px;margin:4px 0 0}
+    .toolbar{display:flex;gap:9px;flex-wrap:wrap}
+    .search{min-width:230px;flex:1;background:#18251b;border:1px solid #3a4b3c;color:#eef5e9;border-radius:10px;padding:10px 12px}
+    .filter{background:#18251b;border:1px solid #3a4b3c;color:#e4eedf;border-radius:10px;padding:10px 12px;min-width:145px}
+    .board{display:grid;grid-template-columns:repeat(4,minmax(215px,1fr));gap:12px;align-items:start;margin-top:16px}
+    .column{background:#152018;border:1px solid #2f4132;border-radius:15px;min-height:315px;padding:12px}
+    .column-head{display:flex;align-items:center;justify-content:space-between;padding:4px 3px 14px;font-size:13px;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
+    .column-head span{display:flex;gap:9px;align-items:center}.column-head i{height:8px;width:8px;border-radius:50%;display:inline-block}
+    .count{color:#8da08e;background:#233126;border-radius:6px;padding:2px 7px;font-size:12px}
+    .card{display:block;width:100%;text-align:left;border:1px solid #38503b;background:#1e2d21;border-radius:11px;padding:14px;color:#edf4e9;margin-bottom:9px;transition:transform .15s,border-color .15s}
+    .card:hover{transform:translateY(-2px);border-color:#9dc96d}
+    .card-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+    .task-id{font-size:11px;color:#8fa38d;font-weight:800;letter-spacing:.1em}
+    .phase{font-size:10px;border-radius:5px;padding:4px 6px;background:#354534;color:#cbe4b9;text-transform:uppercase;letter-spacing:.07em;font-weight:800}
+    .card h3{font-size:15px;line-height:1.3;margin:11px 0 7px;letter-spacing:-.01em}
+    .card p{font-size:12px;line-height:1.45;color:#a6b8a7;margin:0 0 12px}
+    .card-foot{border-top:1px solid #344636;padding-top:10px;font-size:11px;color:#9cad9b;display:flex;justify-content:space-between}
+    .empty{border:1px dashed #456047;border-radius:11px;padding:22px 12px;color:#8fa58f;font-size:13px;text-align:center}
+    .panel-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .panel{background:#17231a;border:1px solid #304333;border-radius:15px;padding:21px}
+    .panel h3{margin:0 0 9px;font-size:18px}.panel p,.panel li{color:#b0bfb0;line-height:1.6;font-size:14px}
+    .panel ul{margin:8px 0 0;padding-left:20px}
+    .panel .eyebrow{color:#d7fb75;font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;margin-bottom:10px}
+    .roadmap-list{display:grid;gap:12px}
+    .milestone{display:grid;grid-template-columns:58px 1fr auto;gap:15px;align-items:center;background:#18251b;border:1px solid #314535;border-radius:13px;padding:17px}
+    .milestone .number{font-size:24px;font-weight:900;color:#d7fb75}
+    .milestone h3{margin:0 0 3px;font-size:17px}.milestone p{margin:0;color:#aab9aa;font-size:13px;line-height:1.45}
+    .milestone .badge{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#d5e8c8;border:1px solid #49604a;border-radius:30px;padding:6px 9px;white-space:nowrap}
+    .stats-controls{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px}
+    .chip{font-size:12px;padding:8px 11px;border-radius:30px}
+    .chip.active{background:#d7fb75;border-color:#d7fb75;color:#18220d}
+    .stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .stat{background:#1b2a1f;border:1px solid #344837;border-radius:11px;padding:13px}
+    .stat b{font-size:14px;display:block}.stat small{display:block;margin-top:7px;color:#91a790;font-size:12px}
+    .stat p{margin:7px 0 0;color:#b8c8b5;font-size:12px;line-height:1.45}
+    dialog{border:1px solid #65845a;border-radius:18px;background:#17241a;color:#ecf4e9;width:min(560px,calc(100vw - 24px));max-height:90vh;overflow:auto;padding:0;box-shadow:0 30px 90px #0009}
+    dialog::backdrop{background:#050a07c9;backdrop-filter:blur(4px)}
+    .dialog-inner{padding:25px}.dialog-head{display:flex;justify-content:space-between;gap:15px;align-items:start}
+    .dialog-head h2{margin:4px 0 0;font-size:25px}.dialog-head small{color:#d7fb75;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+    .icon-button{padding:6px 11px;font-size:18px}
+    .dialog-inner p{color:#bbcab9;line-height:1.55}
+    label{display:block;color:#cad8c6;font-weight:700;font-size:13px;margin:17px 0 6px}
+    .field{width:100%;background:#0f1a12;color:#eaf4e7;border:1px solid #425845;border-radius:9px;padding:11px 12px}
+    textarea.field{min-height:91px;resize:vertical}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .dialog-actions{display:flex;justify-content:space-between;gap:10px;margin-top:24px}
+    .danger{color:#ffb6a5}
+    .toast{position:fixed;right:24px;bottom:22px;background:#d7fb75;color:#18220d;border-radius:10px;padding:12px 16px;font-weight:800;box-shadow:0 10px 30px #0008;z-index:10}
+    .hidden{display:none!important}
+    @media(max-width:1050px){.board{grid-template-columns:repeat(2,minmax(215px,1fr))}.hero{grid-template-columns:1fr 235px}.stats-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:750px){.app{display:block}.sidebar{padding:12px 16px;border-right:0;border-bottom:1px solid #2c3b2f;display:block}.brand{display:none}.nav{display:flex;overflow:auto;gap:5px}.nav button{width:auto;white-space:nowrap;padding:8px 10px;font-size:13px}.sidebar-note{display:none}main{padding:20px 14px 35px}.topline{align-items:start}.top-actions{flex-wrap:wrap;justify-content:flex-end}.top-actions button{font-size:12px;padding:8px}.hero{grid-template-columns:1fr;margin-top:23px}.radar{min-height:145px}.summary{grid-template-columns:repeat(2,1fr)}.section-head{align-items:start;flex-direction:column}.toolbar{width:100%}.board{grid-template-columns:repeat(2,minmax(0,1fr))}.stats-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:520px){.board,.panel-grid,.stats-grid{grid-template-columns:1fr}.milestone{grid-template-columns:38px 1fr}.milestone .badge{grid-column:2;justify-self:start}.form-row{grid-template-columns:1fr}.topline{font-size:11px}}
+    @media(prefers-reduced-motion:reduce){.sweep{animation:none}.card{transition:none}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark" aria-hidden="true">⌖</div><div class="brand-name">Tank Tactics<span>Prompt Arena</span></div></div>
+    <nav class="nav" aria-label="Project sections">
+      <button class="active" data-view="board" aria-current="page"><span class="icon">▦</span> Board</button>
+      <button data-view="roadmap"><span class="icon">◇</span> Roadmap</button>
+      <button data-view="systems"><span class="icon">⚙</span> Game systems</button>
+      <button data-view="stats"><span class="icon">▥</span> 36 tank stats</button>
+    </nav>
+    <div class="sidebar-note"><b>Design rule</b><p>Local AI writes a validated behavior plan before a match. The arena runs that plan deterministically for fair multiplayer play.</p></div>
+  </aside>
+  <main>
+    <div class="topline"><span>Android game concept <strong> / Live project board</strong></span><div class="top-actions"><button class="ghost" id="exportBtn" title="Download a backup of your board">↓ Export</button><button class="ghost" id="importBtn" title="Restore a board backup">↑ Import</button><button class="primary" id="addBtn">+ Add task</button></div></div>
+    <section class="hero" aria-label="Project overview">
+      <div class="hero-copy"><h1>Program the squad.<br><em>Survive the arena.</em></h1><p class="intro">A multiplayer tank roguelite inspired by Robocode. Build up to 15 units, equip their tactics, and earn new prompt options by winning arena fights.</p><div class="hero-tags"><span>2D Android first</span><span>Local free AI</span><span>Up to 15 units</span><span>Multiplayer roguelite</span></div></div>
+      <div class="radar" aria-label="Project completion visual"><div class="cross-x"></div><div class="cross-y"></div><div class="sweep"></div><div class="radar-core"><strong id="radarPercent">0%</strong><span>complete</span></div><div class="radar-label">MISSION PROGRESS</div></div>
+    </section>
+    <div class="summary" aria-label="Project totals">
+      <div class="metric"><small>Total tasks</small><strong id="totalCount">0</strong></div>
+      <div class="metric"><small>Ready now</small><strong id="nowCount" class="accent">0</strong></div>
+      <div class="metric"><small>Completed</small><strong id="doneCount">0</strong></div>
+      <div class="metric"><small>First milestone</small><strong style="font-size:19px;margin-top:13px">1 vs AI</strong></div>
+    </div>
+    <section class="view active" id="view-board">
+      <div class="section-head"><div><h2>Mission board</h2><p>Open a card to edit it or move it to the next stage. Changes save in this browser.</p></div></div>
+      <div class="toolbar"><input class="search" id="search" type="search" placeholder="Search tasks…" aria-label="Search tasks"><select class="filter" id="phaseFilter" aria-label="Filter by phase"><option value="all">All phases</option><option value="Foundation">Foundation</option><option value="First playable">First playable</option><option value="Squad & online">Squad & online</option><option value="Roguelite">Roguelite</option><option value="Future">Future</option></select><select class="filter" id="priorityFilter" aria-label="Filter by priority"><option value="all">All priorities</option><option value="High">High priority</option><option value="Medium">Medium priority</option><option value="Low">Low priority</option></select></div>
+      <div class="board" id="board"></div>
+    </section>
+    <section class="view" id="view-roadmap">
+      <div class="section-head"><div><h2>Release path</h2><p>Build the small combat loop before scaling to squads and online runs.</p></div></div>
+      <div class="roadmap-list" id="roadmap"></div>
+    </section>
+    <section class="view" id="view-systems">
+      <div class="section-head"><div><h2>Game systems</h2><p>The rules that connect programming, combat, and rewards.</p></div></div>
+      <div class="panel-grid">
+        <div class="panel"><div class="eyebrow">01 / Program</div><h3>Prompt-to-plan tactics</h3><p>Players describe when to scan, advance, duck, take cover, aim, or retreat. A free local model translates instructions into limited, inspectable rules. Invalid actions fall back to safe defaults.</p></div>
+        <div class="panel"><div class="eyebrow">02 / Equip</div><h3>Modular tank loadouts</h3><p>Start with a Tank Body, Gun, and Radar. Add items such as Drive Vehicle, Duck, Cover, or Sniper Perch to unlock tactical actions. Each unit has a limited equipment budget.</p></div>
+        <div class="panel"><div class="eyebrow">03 / Fight</div><h3>Readable arena combat</h3><p>Top-down 2D arenas use cover, line of sight, ammo, and positioning. A basic computer controlled tank is the first opponent. Squads of up to 15 units and multiplayer arrive in later milestones.</p></div>
+        <div class="panel"><div class="eyebrow">04 / Reward</div><h3>Prompts earned by winning</h3><p>Victory offers a choice of generated tactic fragments and equipment. A run combines temporary upgrades with durable unlocks defined during progression design.</p></div>
+        <div class="panel"><div class="eyebrow">05 / Balance</div><h3>36 distinct stats</h3><p>Offense, weapon handling, defense, mobility, sensing, and utility each affect a different mechanic. Numbers remain visible on tank cards so players can understand why a tactic worked.</p></div>
+        <div class="panel"><div class="eyebrow">06 / Later</div><h3>Long-term collection</h3><p>Planned additions include 3D graphics, a drag-and-drop inventory, broad weapon and armor selection, three-of-a-kind unit upgrades, and cosmetics earned by retiring tanks. Retirement counts at most five wins per tank.</p></div>
+      </div>
+    </section>
+    <section class="view" id="view-stats">
+      <div class="section-head"><div><h2>Tank stat catalog</h2><p>36 unique candidate stats, each tied to one gameplay effect.</p></div></div>
+      <div class="stats-controls" id="statFilters"></div>
+      <div class="stats-grid" id="statsGrid"></div>
+    </section>
+  </main>
+</div>
+<dialog id="taskDialog"><form id="taskForm" class="dialog-inner"><div class="dialog-head"><div><small id="dialogId">New task</small><h2 id="dialogTitle">Add a task</h2></div><button type="button" class="icon-button" id="closeDialog" aria-label="Close">×</button></div><label for="taskTitle">Task title</label><input class="field" id="taskTitle" maxlength="90" required><label for="taskDesc">Description / done when</label><textarea class="field" id="taskDesc" maxlength="700" required></textarea><div class="form-row"><div><label for="taskPhase">Phase</label><select class="field" id="taskPhase"><option>Foundation</option><option>First playable</option><option>Squad & online</option><option>Roguelite</option><option>Future</option></select></div><div><label for="taskPriority">Priority</label><select class="field" id="taskPriority"><option>High</option><option>Medium</option><option>Low</option></select></div></div><label for="taskStatus">Board stage</label><select class="field" id="taskStatus"><option value="now">Now</option><option value="next">Next</option><option value="later">Later</option><option value="done">Done</option></select><div class="dialog-actions"><button type="button" class="ghost danger hidden" id="deleteTask">Delete task</button><button class="primary" type="submit">Save task</button></div></form></dialog>
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+<div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+<script>
+const seed=[
+ {id:"TT-01",title:"Game vision & first milestone",description:"Define the Android 2D first playable: one programmable tank versus one basic AI tank, with a win and a prompt reward.",phase:"Foundation",priority:"High",status:"done"},
+ {id:"TT-02",title:"Interactive progress board",description:"Track milestones, tasks, tank systems, and stat design in an editable project board.",phase:"Foundation",priority:"High",status:"done"},
+ {id:"TT-03",title:"Combat simulation prototype",description:"Build a deterministic top-down arena with movement, line of sight, cover, projectile hits, health, and round results.",phase:"First playable",priority:"High",status:"now"},
+ {id:"TT-04",title:"Basic AI opponent",description:"A computer controlled tank can patrol, scan, aim, fire, seek cover, and challenge the player without a network connection.",phase:"First playable",priority:"High",status:"now"},
+ {id:"TT-05",title:"Tank stats and loadouts",description:"Implement the core subset of stats and equip Tank Body, Gun, Radar, plus one tactical item. Show effects in the tank view.",phase:"First playable",priority:"High",status:"now"},
+ {id:"TT-06",title:"Local AI tactics interpreter",description:"Test a free on-device model. Convert text to a restricted behavior plan and show the player exactly what the tank will do.",phase:"First playable",priority:"High",status:"now"},
+ {id:"TT-07",title:"Android controls and HUD",description:"Deliver readable touch controls, tank status, ammo, cooldowns, and combat feedback on a phone-sized screen.",phase:"First playable",priority:"High",status:"next"},
+ {id:"TT-08",title:"Victory prompt reward",description:"After a win, present generated tactic fragments as a choice and let the player apply one to the next battle.",phase:"First playable",priority:"High",status:"next"},
+ {id:"TT-09",title:"Behavior item rules",description:"Define how Radar, Duck, Cover, Drive Vehicle, and Sniper Perch unlock actions and interact with prompts.",phase:"First playable",priority:"Medium",status:"next"},
+ {id:"TT-10",title:"Squad programming",description:"Support up to 15 units, each with its own loadout and validated tactical plan. Add a clear squad overview.",phase:"Squad & online",priority:"High",status:"next"},
+ {id:"TT-11",title:"Multiplayer match service",description:"Build authoritative matches, player pairing, reconnection, and result reporting for fair online arena fights.",phase:"Squad & online",priority:"High",status:"later"},
+ {id:"TT-12",title:"Roguelite run structure",description:"Define battle sequence, losses, temporary upgrades, and permanent unlocks. Reward wins with prompt and item choices.",phase:"Roguelite",priority:"High",status:"later"},
+ {id:"TT-13",title:"Prompt safety and balance",description:"Limit model output to allowed actions, test contradictory instructions, and prevent prompt text from changing combat rules.",phase:"Squad & online",priority:"High",status:"later"},
+ {id:"TT-14",title:"Arena variety",description:"Add maps with cover patterns, sight lines, hazards, and modes that give different tactics a purpose.",phase:"Roguelite",priority:"Medium",status:"later"},
+ {id:"TT-15",title:"3D presentation",description:"Evaluate a Unity-style 3D upgrade after the 2D combat loop proves fun and readable.",phase:"Future",priority:"Low",status:"later"},
+ {id:"TT-16",title:"Drag-and-drop inventory",description:"Provide tank equipment slots and a shared inventory where items can be dragged onto units.",phase:"Future",priority:"Medium",status:"later"},
+ {id:"TT-17",title:"Expanded weapons and armor",description:"Build a broad catalog with clear tradeoffs, rarity, and visual identity.",phase:"Future",priority:"Medium",status:"later"},
+ {id:"TT-18",title:"Three-of-a-kind upgrades",description:"Collect three units of the same type and tier to combine them into an upgraded unit.",phase:"Future",priority:"Medium",status:"later"},
+ {id:"TT-19",title:"Retirement cosmetics currency",description:"Retire a tank for cosmetics currency. Credit at most five wins per tank, with a clear preview before retirement.",phase:"Future",priority:"Low",status:"later"}
+];
+const stats=[
+ ["Damage","Offense","Base health lost on a direct hit."],["Crit chance","Offense","Chance that a hit becomes critical."],["Crit multiplier","Offense","Extra damage applied to a critical hit."],["Armor penetration","Offense","Armor bypassed by a hit."],["Projectile speed","Offense","Travel speed of fired projectiles."],["Explosion radius","Offense","Area reached by explosive impact."],["Aim accuracy","Offense","Spread around the intended aim point."],["Splash falloff","Offense","How quickly blast damage drops with distance."],
+ ["Reload time","Weapon handling","Time to load the next shot or magazine."],["Magazine size","Weapon handling","Shots available before a reload."],["Ammo reserve","Weapon handling","Additional rounds carried into a battle."],["Turret traverse","Weapon handling","Speed at which the weapon turns."],["Recoil recovery","Weapon handling","Time until aim steadies after firing."],
+ ["Hull integrity","Defense","Maximum health of the tank body."],["Armor rating","Defense","Flat reduction to incoming weapon damage."],["Shield capacity","Defense","Damage absorbed before the shield breaks."],["Shield recharge delay","Defense","Wait after taking damage before shielding resumes."],["Collision resistance","Defense","Reduction to ram and obstacle damage."],["Heat tolerance","Defense","Heat allowed before weapons or abilities stall."],["Repair efficiency","Defense","Health restored by a repair action or pickup."],
+ ["Maximum speed","Mobility","Top movement speed."],["Acceleration","Mobility","Time to build movement speed."],["Hull turn rate","Mobility","Speed at which the body rotates."],["Braking power","Mobility","How quickly movement stops."],["Boost duration","Mobility","Time a speed boost remains active."],["Terrain traction","Mobility","Movement retained on difficult ground."],
+ ["Radar range","Sensing","Farthest distance at which radar detects a target."],["Scan interval","Sensing","Time between radar sweeps."],["Target lock time","Sensing","Time to establish a firing lock."],["Vision cone","Sensing","Angle covered by direct sight."],["Stealth signature","Sensing","How easily enemies detect the tank."],["ECM strength","Sensing","Ability to disrupt enemy sensing and locks."],
+ ["Energy capacity","Utility","Maximum energy available for active abilities."],["Energy regeneration","Utility","Energy restored each second."],["Ability cooldown reduction","Utility","Reduction to active ability wait time."],["Pickup radius","Utility","Distance at which the tank collects rewards or supplies."]
+];
+const columns=[["now","Now","#d7fb75"],["next","Next","#eeae6c"],["later","Later","#8aa9bd"],["done","Done","#8ed1a2"]];
+const milestones=[
+ ["00","Design baseline","Game loop, local AI boundary, first playable target, board, and stat catalog.","Defined"],
+ ["01","First playable","One programmable Android tank fights a basic AI tank in a 2D arena and earns a prompt reward.","Build next"],
+ ["02","Squad & online","Grow to 15 programmable units, add validated team tactics, and run authoritative multiplayer matches.","Planned"],
+ ["03","Roguelite runs","Add branching battles, prompt rewards, item choices, and a clear run reset.","Planned"],
+ ["04","Collection expansion","3D visuals, inventory slots, broad gear, three-unit upgrades, and retirement cosmetics.","Future"]
+];
+const key="tank-tactics-board-v1";
+let tasks=loadTasks(),editingId=null,activeStat="All";
+function loadTasks(){try{const v=JSON.parse(localStorage.getItem(key));if(Array.isArray(v)&&v.every(validTask))return v}catch{}return seed.map(x=>({...x}))}
+function validTask(t){return t&&typeof t.id==="string"&&typeof t.title==="string"&&typeof t.description==="string"&&["now","next","later","done"].includes(t.status)&&["Foundation","First playable","Squad & online","Roguelite","Future"].includes(t.phase)&&["High","Medium","Low"].includes(t.priority)}
+function save(){localStorage.setItem(key,JSON.stringify(tasks));render()}
+function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e}
+function toast(message){const e=document.getElementById("toast");e.textContent=message;e.classList.remove("hidden");clearTimeout(toast.timer);toast.timer=setTimeout(()=>e.classList.add("hidden"),3000)}
+function renderSummary(){const done=tasks.filter(t=>t.status==="done").length;const pct=tasks.length?Math.round(done/tasks.length*100):0;document.getElementById("radarPercent").textContent=pct+"%";document.getElementById("totalCount").textContent=tasks.length;document.getElementById("nowCount").textContent=tasks.filter(t=>t.status==="now").length;document.getElementById("doneCount").textContent=done}
+function renderBoard(){const root=document.getElementById("board");root.replaceChildren();const q=document.getElementById("search").value.trim().toLowerCase(),phase=document.getElementById("phaseFilter").value,priority=document.getElementById("priorityFilter").value;for(const [status,label,color] of columns){const col=el("section","column");const head=el("div","column-head");const left=el("span");const dot=el("i");dot.style.background=color;left.append(dot,document.createTextNode(label));head.append(left);const filtered=tasks.filter(t=>t.status===status&&(phase==="all"||t.phase===phase)&&(priority==="all"||t.priority===priority)&&(!q||(t.title+" "+t.description+" "+t.id).toLowerCase().includes(q)));head.append(el("span","count",filtered.length));col.append(head);if(!filtered.length)col.append(el("div","empty","No matching tasks"));for(const t of filtered){const card=el("button","card");card.type="button";card.setAttribute("aria-label","Open "+t.title);const top=el("div","card-top");top.append(el("span","task-id",t.id),el("span","phase",t.phase));card.append(top,el("h3","",t.title),el("p","",t.description));const foot=el("div","card-foot");foot.append(el("span","",t.priority+" priority"),el("span","","Open ↗"));card.append(foot);card.addEventListener("click",()=>openTask(t.id));col.append(card)}root.append(col)}}
+function renderRoadmap(){const root=document.getElementById("roadmap");root.replaceChildren();for(const [number,title,desc,badge] of milestones){const row=el("div","milestone");const copy=el("div");copy.append(el("h3","",title),el("p","",desc));row.append(el("span","number",number),copy,el("span","badge",badge));root.append(row)}}
+function renderStats(){const filters=document.getElementById("statFilters"),grid=document.getElementById("statsGrid");filters.replaceChildren();grid.replaceChildren();for(const cat of ["All",...new Set(stats.map(x=>x[1]))]){const btn=el("button","chip"+(cat===activeStat?" active":""),cat);btn.type="button";btn.addEventListener("click",()=>{activeStat=cat;renderStats()});filters.append(btn)}for(const [name,cat,desc] of stats.filter(x=>activeStat==="All"||x[1]===activeStat)){const cell=el("div","stat");cell.append(el("b","",name),el("small","",cat),el("p","",desc));grid.append(cell)}}
+function render(){renderSummary();renderBoard();renderStats()}
+function openTask(id){editingId=id;const t=tasks.find(x=>x.id===id);document.getElementById("dialogId").textContent=t?t.id:"New task";document.getElementById("dialogTitle").textContent=t?"Edit task":"Add a task";document.getElementById("taskTitle").value=t?.title||"";document.getElementById("taskDesc").value=t?.description||"";document.getElementById("taskPhase").value=t?.phase||"First playable";document.getElementById("taskPriority").value=t?.priority||"Medium";document.getElementById("taskStatus").value=t?.status||"next";document.getElementById("deleteTask").classList.toggle("hidden",!t);document.getElementById("taskDialog").showModal();document.getElementById("taskTitle").focus()}
+document.querySelectorAll(".nav button").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".nav button").forEach(x=>{x.classList.toggle("active",x===b);x.removeAttribute("aria-current")});b.setAttribute("aria-current","page");document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+b.dataset.view));window.scrollTo({top:0,behavior:"smooth"})}));
+document.getElementById("addBtn").addEventListener("click",()=>openTask(null));
+document.getElementById("closeDialog").addEventListener("click",()=>document.getElementById("taskDialog").close());
+document.getElementById("taskForm").addEventListener("submit",e=>{e.preventDefault();const data={id:editingId||"TT-"+String(Math.max(0,...tasks.map(t=>Number(t.id.replace("TT-",""))||0))+1).padStart(2,"0"),title:document.getElementById("taskTitle").value.trim(),description:document.getElementById("taskDesc").value.trim(),phase:document.getElementById("taskPhase").value,priority:document.getElementById("taskPriority").value,status:document.getElementById("taskStatus").value};if(!data.title||!data.description)return;if(editingId){tasks=tasks.map(t=>t.id===editingId?data:t)}else tasks.push(data);save();document.getElementById("taskDialog").close();toast("Task saved")});
+document.getElementById("deleteTask").addEventListener("click",()=>{if(!editingId||!confirm("Delete this task?"))return;tasks=tasks.filter(t=>t.id!==editingId);save();document.getElementById("taskDialog").close();toast("Task deleted")});
+["search","phaseFilter","priorityFilter"].forEach(id=>document.getElementById(id).addEventListener(id==="search"?"input":"change",renderBoard));
+document.getElementById("exportBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify({app:"Tank Tactics Board",version:1,tasks},null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="tank-tactics-board.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast("Board backup downloaded")});
+document.getElementById("importBtn").addEventListener("click",()=>document.getElementById("importFile").click());
+document.getElementById("importFile").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());if(!Array.isArray(data.tasks)||!data.tasks.every(validTask))throw Error("Invalid board file");if(!confirm("Replace this browser's board with the imported tasks?"))return;tasks=data.tasks;save();toast("Board restored")}catch{toast("Could not read that board backup")}finally{e.target.value=""}});
+renderRoadmap();render();
+</script>
+</body>
+</html>
