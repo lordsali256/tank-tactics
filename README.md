@@ -1,6 +1,8 @@
 # Tank Tactics: Prompt Arena
 
-An Android multiplayer roguelite concept inspired by Robocode. The companion project board is in `dist/index.html`.
+An Android multiplayer roguelite concept inspired by Robocode. The companion project board is in `dist/index.html`, and a playable phone-friendly browser prototype is in `dist/play.html`.
+
+The browser prototype is an early 1-versus-AI test. It interprets tactical text with local rules, not an LLM. Native Android packaging, a free local language model, multiplayer, and 15-unit squads remain on the project board.
 
 ## Game loop
 

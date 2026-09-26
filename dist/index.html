@@ -33,7 +33,7 @@
     .top-actions{display:flex;gap:8px}
     .ghost,.primary,.chip,.mini,.icon-button{border:1px solid #3a4c3c;border-radius:10px;background:#1c2b20;color:#e8f0e5;padding:10px 14px;font-weight:700}
     .ghost:hover,.chip:hover,.mini:hover,.icon-button:hover{border-color:#8cb05c;background:#27392a}
-    .primary{background:#d7fb75;border-color:#d7fb75;color:#18220d}
+    .primary{background:#d7fb75;border-color:#d7fb75;color:#18220d;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
     .primary:hover{background:#e8ffab}
     .hero{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:24px;align-items:stretch;margin:29px 0 28px}
     h1{font-size:clamp(32px,4vw,56px);letter-spacing:-.055em;line-height:1.05;margin:0 0 12px}
@@ -128,7 +128,7 @@
     <div class="sidebar-note"><b>Design rule</b><p>Local AI writes a validated behavior plan before a match. The arena runs that plan deterministically for fair multiplayer play.</p></div>
   </aside>
   <main>
-    <div class="topline"><span>Android game concept <strong> / Live project board</strong></span><div class="top-actions"><button class="ghost" id="exportBtn" title="Download a backup of your board">↓ Export</button><button class="ghost" id="importBtn" title="Restore a board backup">↑ Import</button><button class="primary" id="addBtn">+ Add task</button></div></div>
+    <div class="topline"><span>Android game concept <strong> / Live project board</strong></span><div class="top-actions"><a class="primary" href="./play.html">▶ Play prototype</a><button class="ghost" id="exportBtn" title="Download a backup of your board">↓ Export</button><button class="ghost" id="importBtn" title="Restore a board backup">↑ Import</button><button class="primary" id="addBtn">+ Add task</button></div></div>
     <section class="hero" aria-label="Project overview">
       <div class="hero-copy"><h1>Program the squad.<br><em>Survive the arena.</em></h1><p class="intro">A multiplayer tank roguelite inspired by Robocode. Build up to 15 units, equip their tactics, and earn new prompt options by winning arena fights.</p><div class="hero-tags"><span>2D Android first</span><span>Local free AI</span><span>Up to 15 units</span><span>Multiplayer roguelite</span></div></div>
       <div class="radar" aria-label="Project completion visual"><div class="cross-x"></div><div class="cross-y"></div><div class="sweep"></div><div class="radar-core"><strong id="radarPercent">0%</strong><span>complete</span></div><div class="radar-label">MISSION PROGRESS</div></div>
@@ -189,7 +189,8 @@ const seed=[
  {id:"TT-16",title:"Drag-and-drop inventory",description:"Provide tank equipment slots and a shared inventory where items can be dragged onto units.",phase:"Future",priority:"Medium",status:"later"},
  {id:"TT-17",title:"Expanded weapons and armor",description:"Build a broad catalog with clear tradeoffs, rarity, and visual identity.",phase:"Future",priority:"Medium",status:"later"},
  {id:"TT-18",title:"Three-of-a-kind upgrades",description:"Collect three units of the same type and tier to combine them into an upgraded unit.",phase:"Future",priority:"Medium",status:"later"},
- {id:"TT-19",title:"Retirement cosmetics currency",description:"Retire a tank for cosmetics currency. Credit at most five wins per tank, with a clear preview before retirement.",phase:"Future",priority:"Low",status:"later"}
+ {id:"TT-19",title:"Retirement cosmetics currency",description:"Retire a tank for cosmetics currency. Credit at most five wins per tank, with a clear preview before retirement.",phase:"Future",priority:"Low",status:"later"},
+ {id:"TT-20",title:"Playable browser combat prototype",description:"Open a phone-friendly arena, program one tank with tactical instructions, fight a basic AI tank, and choose a tactic reward after victory. Uses a local rule parser while on-device LLM work remains planned.",phase:"First playable",priority:"High",status:"done"}
 ];
 const stats=[
  ["Damage","Offense","Base health lost on a direct hit."],["Crit chance","Offense","Chance that a hit becomes critical."],["Crit multiplier","Offense","Extra damage applied to a critical hit."],["Armor penetration","Offense","Armor bypassed by a hit."],["Projectile speed","Offense","Travel speed of fired projectiles."],["Explosion radius","Offense","Area reached by explosive impact."],["Aim accuracy","Offense","Spread around the intended aim point."],["Splash falloff","Offense","How quickly blast damage drops with distance."],
