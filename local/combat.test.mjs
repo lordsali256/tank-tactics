@@ -3,10 +3,24 @@ import vm from 'node:vm';
 import assert from 'node:assert/strict';
 const script=fs.readFileSync(new URL('../dist/play.html',import.meta.url),'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
 function simulate(instruction,modelPlan=null){
- const elements=new Map();const element=()=>({textContent:'',value:'',style:{},classList:{remove(){},toggle(){}},replaceChildren(){},append(){},setAttribute(){},addEventListener(){},showModal(){},close(){},querySelector(){return {focus(){}}}});
+ const elements=new Map();const element=()=>({textContent:'',value:'',style:{},children:[],classList:{remove(){},toggle(){}},replaceChildren(){this.children=[]},append(...nodes){this.children.push(...nodes)},setAttribute(){},addEventListener(){},showModal(){},close(){},querySelector(){return {focus(){}}}});
  const document={getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id)},createElement:element,querySelectorAll(){return []}};
  document.getElementById('arena').width=920;document.getElementById('arena').height=560;document.getElementById('arena').getContext=()=>({});document.getElementById('prompt').value=instruction;
  const context=vm.createContext({document,performance:{now:()=>0},requestAnimationFrame(){},AbortSignal,fetch:async()=>{throw Error('test')},Math,console});vm.runInContext(script,context);
+ document.getElementById('prompt').value=instruction;vm.runInContext('preview()',context);
+ vm.runInContext(`
+ activateUnit(roster.find(u=>u.type==='infantry').id);const before=roster.length;combineUnits('infantry',1);
+ if(roster.length!==before-2||roster.filter(u=>u.type==='infantry'&&u.tier===2).length!==1)throw Error('Combine must consume exactly three matches');
+ const upgrade=roster.find(u=>u.type==='infantry');if(!unlocked(upgrade).includes('duck')||unlocked(upgrade).includes('perch')||!commands.has('duck')||selectedUnit().id!==upgrade.id)throw Error('Tier commands incorrect');
+ const count=roster.length;combineUnits('infantry',2);if(roster.length!==count)throw Error('Insufficient copies must not combine');
+ roster.push(newUnit('infantry',2),newUnit('infantry',2));combineUnits('infantry',2);if(selectedUnit().tier!==3||!commands.has('retreat')||!commands.has('perch'))throw Error('Third star unlocks incorrect');
+ for(const type of Object.keys(unitTypes)){activateUnit(roster.find(u=>u.type===type).id);if(player.stats.mag!==unitTypes[type].mag||player.type!==type)throw Error('Unit combat profile mismatch');}
+ activateUnit(roster.find(u=>u.type==='tank').id);
+ finish(true);const recruitCount=roster.length;chooseReward({unitType:'sniper'});if(roster.length!==recruitCount+1||round!==2||nextBuff!==null)throw Error('Recruit reward failed');
+ while(roster.length<15)roster.push(newUnit('sniper'));const full=roster.length;chooseReward({unitType:'tank'});if(roster.length!==full)throw Error('Collection limit failed');
+ round=1;mode='ready';wins=0;
+ `,context);
+ document.getElementById('prompt').value=instruction;vm.runInContext('preview()',context);
  if(modelPlan)vm.runInContext('compiledPlan='+JSON.stringify(modelPlan)+';compiledText=$("prompt").value;',context);
  vm.runInContext('deploy();for(let n=0;n<2701&&mode==="running";n++)update(1/60);',context);
  return JSON.parse(vm.runInContext('JSON.stringify({mode,hp:player.hp,enemyHp:enemy.hp,x:player.x,y:player.y,ammo:player.ammo,plan})',context));
