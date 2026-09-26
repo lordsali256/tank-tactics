@@ -125,19 +125,19 @@
       <button data-view="systems"><span class="icon">⚙</span> Game systems</button>
       <button data-view="stats"><span class="icon">▥</span> 36 tank stats</button>
     </nav>
-    <div class="sidebar-note"><b>Design rule</b><p>Local AI writes a validated behavior plan before a match. The arena runs that plan deterministically for fair multiplayer play.</p></div>
+    <div class="sidebar-note"><b>AI status</b><p>Current prototype: local rule parser. No LLM is connected. A free local model is planned for generated instructions.</p></div>
   </aside>
   <main>
     <div class="topline"><span>Android game concept <strong> / Live project board</strong></span><div class="top-actions"><a class="primary" href="./play.html">▶ Play prototype</a><button class="ghost" id="exportBtn" title="Download a backup of your board">↓ Export</button><button class="ghost" id="importBtn" title="Restore a board backup">↑ Import</button><button class="primary" id="addBtn">+ Add task</button></div></div>
     <section class="hero" aria-label="Project overview">
-      <div class="hero-copy"><h1>Program the squad.<br><em>Survive the arena.</em></h1><p class="intro">A multiplayer tank roguelite inspired by Robocode. Build up to 15 units, equip their tactics, and earn new prompt options by winning arena fights.</p><div class="hero-tags"><span>2D Android first</span><span>Local free AI</span><span>Up to 15 units</span><span>Multiplayer roguelite</span></div></div>
+      <div class="hero-copy"><h1>Program the squad.<br><em>Survive the arena.</em></h1><p class="intro">A multiplayer roguelite inspired by Robocode. Build up to 15 programmable units across infantry, tanks, helicopters, and boats for sea maps.</p><div class="hero-tags"><span>Tank prototype playable</span><span>LLM not connected yet</span><span>Up to 15 units planned</span><span>Multiplayer roguelite</span></div></div>
       <div class="radar" aria-label="Project completion visual"><div class="cross-x"></div><div class="cross-y"></div><div class="sweep"></div><div class="radar-core"><strong id="radarPercent">0%</strong><span>complete</span></div><div class="radar-label">MISSION PROGRESS</div></div>
     </section>
     <div class="summary" aria-label="Project totals">
       <div class="metric"><small>Total tasks</small><strong id="totalCount">0</strong></div>
       <div class="metric"><small>Ready now</small><strong id="nowCount" class="accent">0</strong></div>
       <div class="metric"><small>Completed</small><strong id="doneCount">0</strong></div>
-      <div class="metric"><small>First milestone</small><strong style="font-size:19px;margin-top:13px">1 vs AI</strong></div>
+      <div class="metric"><small>LLM in game</small><strong style="font-size:23px;margin-top:10px">None</strong><span style="font-size:11px;color:#a5baa0">Local rule parser</span></div>
     </div>
     <section class="view active" id="view-board">
       <div class="section-head"><div><h2>Mission board</h2><p>Open a card to edit it or move it to the next stage. Changes save in this browser.</p></div></div>
@@ -151,10 +151,10 @@
     <section class="view" id="view-systems">
       <div class="section-head"><div><h2>Game systems</h2><p>The rules that connect programming, combat, and rewards.</p></div></div>
       <div class="panel-grid">
-        <div class="panel"><div class="eyebrow">01 / Program</div><h3>Prompt-to-plan tactics</h3><p>Players describe when to scan, advance, duck, take cover, aim, or retreat. A free local model translates instructions into limited, inspectable rules. Invalid actions fall back to safe defaults.</p></div>
-        <div class="panel"><div class="eyebrow">02 / Equip</div><h3>Modular tank loadouts</h3><p>Start with a Tank Body, Gun, and Radar. Add items such as Drive Vehicle, Duck, Cover, or Sniper Perch to unlock tactical actions. Each unit has a limited equipment budget.</p></div>
-        <div class="panel"><div class="eyebrow">03 / Fight</div><h3>Readable arena combat</h3><p>Top-down 2D arenas use cover, line of sight, ammo, and positioning. A basic computer controlled tank is the first opponent. Squads of up to 15 units and multiplayer arrive in later milestones.</p></div>
-        <div class="panel"><div class="eyebrow">04 / Reward</div><h3>Prompts earned by winning</h3><p>Victory offers a choice of generated tactic fragments and equipment. A run combines temporary upgrades with durable unlocks defined during progression design.</p></div>
+        <div class="panel"><div class="eyebrow">01 / Program</div><h3>Prompt-to-plan tactics</h3><p>The prototype uses a local rule parser to turn instructions into visible range, movement, and aiming rules. No LLM is in the game yet. A free local model is planned for richer instruction generation.</p></div>
+        <div class="panel"><div class="eyebrow">02 / Commands</div><h3>Unit programming language</h3><p>Radar, Gun, Drive, Duck, Cover, and Sniper Perch are program commands. They grant actions and conditions without changing the natural-language instruction. Future unit types can have their own command sets.</p></div>
+        <div class="panel"><div class="eyebrow">03 / Fight</div><h3>Multi-domain units</h3><p>The tank is the playable prototype. The final roster is planned to include infantry, tanks, helicopters, and boats on sea maps, with squads of up to 15 units and multiplayer arenas.</p></div>
+        <div class="panel"><div class="eyebrow">04 / Reward</div><h3>Instructions earned by winning</h3><p>Victory currently offers an instruction and a buff that lasts one round. Future local-model generation and roguelite progression will expand the choices.</p></div>
         <div class="panel"><div class="eyebrow">05 / Balance</div><h3>36 distinct stats</h3><p>Offense, weapon handling, defense, mobility, sensing, and utility each affect a different mechanic. Numbers remain visible on tank cards so players can understand why a tactic worked.</p></div>
         <div class="panel"><div class="eyebrow">06 / Later</div><h3>Long-term collection</h3><p>Planned additions include 3D graphics, a drag-and-drop inventory, broad weapon and armor selection, three-of-a-kind unit upgrades, and cosmetics earned by retiring tanks. Retirement counts at most five wins per tank.</p></div>
       </div>
@@ -175,14 +175,14 @@ const seed=[
  {id:"TT-02",title:"Interactive progress board",description:"Track milestones, tasks, tank systems, and stat design in an editable project board.",phase:"Foundation",priority:"High",status:"done"},
  {id:"TT-03",title:"Combat simulation prototype",description:"Build a deterministic top-down arena with movement, line of sight, cover, projectile hits, health, and round results.",phase:"First playable",priority:"High",status:"now"},
  {id:"TT-04",title:"Basic AI opponent",description:"A computer controlled tank can patrol, scan, aim, fire, seek cover, and challenge the player without a network connection.",phase:"First playable",priority:"High",status:"now"},
- {id:"TT-05",title:"Tank stats and loadouts",description:"Implement the core subset of stats and equip Tank Body, Gun, Radar, plus one tactical item. Show effects in the tank view.",phase:"First playable",priority:"High",status:"now"},
+ {id:"TT-05",title:"Tank stats and commands",description:"Implement the core subset of stats and make Radar, Gun, Drive, Duck, Cover, and Sniper Perch into programmable actions with visible effects.",phase:"First playable",priority:"High",status:"done"},
  {id:"TT-06",title:"Local AI tactics interpreter",description:"Test a free on-device model. Convert text to a restricted behavior plan and show the player exactly what the tank will do.",phase:"First playable",priority:"High",status:"now"},
  {id:"TT-07",title:"Android controls and HUD",description:"Deliver readable touch controls, tank status, ammo, cooldowns, and combat feedback on a phone-sized screen.",phase:"First playable",priority:"High",status:"next"},
  {id:"TT-08",title:"Victory prompt reward",description:"After a win, present generated tactic fragments as a choice and let the player apply one to the next battle.",phase:"First playable",priority:"High",status:"next"},
- {id:"TT-09",title:"Behavior item rules",description:"Define how Radar, Duck, Cover, Drive Vehicle, and Sniper Perch unlock actions and interact with prompts.",phase:"First playable",priority:"Medium",status:"next"},
- {id:"TT-10",title:"Squad programming",description:"Support up to 15 units, each with its own loadout and validated tactical plan. Add a clear squad overview.",phase:"Squad & online",priority:"High",status:"next"},
+ {id:"TT-09",title:"Program command rules",description:"Define each unit's Radar, Gun, Drive, Duck, Cover, and Sniper Perch actions and how instructions prioritize them.",phase:"First playable",priority:"Medium",status:"next"},
+ {id:"TT-10",title:"Squad programming",description:"Support up to 15 mixed units, each with its own commands and validated tactical plan. Add a clear squad overview.",phase:"Squad & online",priority:"High",status:"next"},
  {id:"TT-11",title:"Multiplayer match service",description:"Build authoritative matches, player pairing, reconnection, and result reporting for fair online arena fights.",phase:"Squad & online",priority:"High",status:"later"},
- {id:"TT-12",title:"Roguelite run structure",description:"Define battle sequence, losses, temporary upgrades, and permanent unlocks. Reward wins with prompt and item choices.",phase:"Roguelite",priority:"High",status:"later"},
+ {id:"TT-12",title:"Roguelite run structure",description:"Define battle sequence, losses, temporary upgrades, and permanent unlocks. Reward wins with instruction and buff choices.",phase:"Roguelite",priority:"High",status:"later"},
  {id:"TT-13",title:"Prompt safety and balance",description:"Limit model output to allowed actions, test contradictory instructions, and prevent prompt text from changing combat rules.",phase:"Squad & online",priority:"High",status:"later"},
  {id:"TT-14",title:"Arena variety",description:"Add maps with cover patterns, sight lines, hazards, and modes that give different tactics a purpose.",phase:"Roguelite",priority:"Medium",status:"later"},
  {id:"TT-15",title:"3D presentation",description:"Evaluate a Unity-style 3D upgrade after the 2D combat loop proves fun and readable.",phase:"Future",priority:"Low",status:"later"},
@@ -190,7 +190,8 @@ const seed=[
  {id:"TT-17",title:"Expanded weapons and armor",description:"Build a broad catalog with clear tradeoffs, rarity, and visual identity.",phase:"Future",priority:"Medium",status:"later"},
  {id:"TT-18",title:"Three-of-a-kind upgrades",description:"Collect three units of the same type and tier to combine them into an upgraded unit.",phase:"Future",priority:"Medium",status:"later"},
  {id:"TT-19",title:"Retirement cosmetics currency",description:"Retire a tank for cosmetics currency. Credit at most five wins per tank, with a clear preview before retirement.",phase:"Future",priority:"Low",status:"later"},
- {id:"TT-PROTO",title:"Playable browser combat prototype",description:"Open a phone-friendly arena, program one tank with tactical instructions, fight a basic AI tank, and choose a tactic reward after victory. Uses a local rule parser while on-device LLM work remains planned.",phase:"First playable",priority:"High",status:"done"}
+ {id:"TT-PROTO",title:"Playable browser combat prototype",description:"Program one tank with instructions and commands, fight a basic AI tank, see its live plan, and choose an instruction plus one-round buff after victory. Uses a local rule parser.",phase:"First playable",priority:"High",status:"done"},
+ {id:"TT-UNITS",title:"Multi-domain unit roster",description:"Design infantry, tank, helicopter, and boat roles, movement rules, commands, and sea-map compatibility for future squad battles.",phase:"Squad & online",priority:"High",status:"later"}
 ];
 const stats=[
  ["Damage","Offense","Base health lost on a direct hit."],["Crit chance","Offense","Chance that a hit becomes critical."],["Crit multiplier","Offense","Extra damage applied to a critical hit."],["Armor penetration","Offense","Armor bypassed by a hit."],["Projectile speed","Offense","Travel speed of fired projectiles."],["Explosion radius","Offense","Area reached by explosive impact."],["Aim accuracy","Offense","Spread around the intended aim point."],["Splash falloff","Offense","How quickly blast damage drops with distance."],
@@ -210,7 +211,7 @@ const milestones=[
 ];
 const key="tank-tactics-board-v1";
 let tasks=loadTasks(),editingId=null,activeStat="All";
-function loadTasks(){try{const v=JSON.parse(localStorage.getItem(key));if(Array.isArray(v)&&v.every(validTask)){const migration=key+"-prototype-added";if(!localStorage.getItem(migration)){if(!v.some(t=>t.id==="TT-PROTO"))v.push({...seed.find(t=>t.id==="TT-PROTO")});localStorage.setItem(key,JSON.stringify(v));localStorage.setItem(migration,"1")}return v}}catch{}return seed.map(x=>({...x}))}
+function loadTasks(){try{const v=JSON.parse(localStorage.getItem(key));if(Array.isArray(v)&&v.every(validTask)){const migration=key+"-prototype-added";if(!localStorage.getItem(migration)){if(!v.some(t=>t.id==="TT-PROTO"))v.push({...seed.find(t=>t.id==="TT-PROTO")});localStorage.setItem(migration,"1")}const rosterMigration=key+"-unit-roster-added";if(!localStorage.getItem(rosterMigration)){if(!v.some(t=>t.id==="TT-UNITS"))v.push({...seed.find(t=>t.id==="TT-UNITS")});const oldDescriptions={"TT-05":"Implement the core subset of stats and equip Tank Body, Gun, Radar, plus one tactical item. Show effects in the tank view.","TT-09":"Define how Radar, Duck, Cover, Drive Vehicle, and Sniper Perch unlock actions and interact with prompts.","TT-10":"Support up to 15 units, each with its own loadout and validated tactical plan. Add a clear squad overview.","TT-12":"Define battle sequence, losses, temporary upgrades, and permanent unlocks. Reward wins with prompt and item choices.","TT-PROTO":"Open a phone-friendly arena, program one tank with tactical instructions, fight a basic AI tank, and choose a tactic reward after victory. Uses a local rule parser while on-device LLM work remains planned."};for(const id of Object.keys(oldDescriptions)){const current=v.find(t=>t.id===id),fresh=seed.find(t=>t.id===id);if(current&&fresh&&current.description===oldDescriptions[id]){current.title=fresh.title;current.description=fresh.description;if(id==="TT-05"&&current.status==="now")current.status="done"}}localStorage.setItem(rosterMigration,"1")}localStorage.setItem(key,JSON.stringify(v));return v}}catch{}return seed.map(x=>({...x}))}
 function validTask(t){return t&&typeof t.id==="string"&&typeof t.title==="string"&&typeof t.description==="string"&&["now","next","later","done"].includes(t.status)&&["Foundation","First playable","Squad & online","Roguelite","Future"].includes(t.phase)&&["High","Medium","Low"].includes(t.priority)}
 function save(){localStorage.setItem(key,JSON.stringify(tasks));render()}
 function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e}

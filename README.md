@@ -2,28 +2,30 @@
 
 An Android multiplayer roguelite concept inspired by Robocode. The companion project board is in `dist/index.html`, and a playable phone-friendly browser prototype is in `dist/play.html`.
 
-The browser prototype is an early 1-versus-AI test. It interprets tactical text with local rules, not an LLM. Native Android packaging, a free local language model, multiplayer, and 15-unit squads remain on the project board.
+The browser prototype is an early 1-versus-AI tank test. It interprets tactical text with local rules, not an LLM. The project board explicitly shows **LLM in game: None**. Native Android packaging, a free local language model, multiplayer, and 15-unit mixed squads remain planned.
 
 ## Game loop
 
-1. Assemble a squad of up to 15 programmable tanks from chassis, weapons, sensors, movement, and behavior items.
-2. Give each unit a short natural-language tactical instruction. A free local model converts it into a bounded behavior plan.
-3. Test the squad against basic computer controlled tanks, then enter multiplayer arena runs.
-4. Win rounds to earn new prompt fragments and item choices. Lose a run and restart with the permanent unlocks allowed by the progression rules.
+1. Assemble a squad of up to 15 programmable units. Planned types include infantry, tanks, helicopters, and boats for sea maps.
+2. Give each unit a natural-language tactical instruction and a set of program commands. Radar, Gun, Drive, Duck, Cover, and Sniper Perch are commands, separate from the instruction text.
+3. Test the squad against basic computer controlled units, then enter multiplayer arena runs.
+4. Win rounds to earn new instructions and temporary buffs. Lose a run and restart with the permanent unlocks allowed by the progression rules.
 
-The local model generates structured behavior plans before a match. The deterministic combat simulation executes only validated actions, keeping multiplayer matches fair and replayable. Players can edit instructions and see a preview of the parsed behavior before locking a squad.
+The planned local model will generate structured behavior plans before a match. The deterministic combat simulation will execute only validated actions, keeping multiplayer matches fair and replayable. The current tank prototype uses a local rule parser and shows its interpretation and live actions during battle.
 
 ## First playable milestone
 
 - Android 2D top-down arena with one programmable tank versus a basic AI tank.
-- Local prompt generation and interpretation with an offline free model.
-- Equip a Tank Body, Gun, Radar, and one movement or defense item.
-- Stats, health, ammo, cover, win/loss, and a prompt reward after victory.
+- Show the interpreted instruction and actual tank actions during combat.
+- Program tank actions through commands rather than equipment-style tactical items.
+- Show the active tank stats in the arena and offer an instruction plus one-round buff after victory.
+- Integrate local prompt generation with an offline free model after the deterministic command loop is solid.
 - Expand to squads, multiplayer, and roguelite progression after the single-tank loop works.
 
 ## Future scope
 
 - 3D presentation, potentially in Unity.
+- Infantry, helicopters, and boats with unit-specific programming commands and sea maps.
 - Drag-and-drop tank inventory slots and a larger weapon and armor catalog.
 - Three matching units of the same type and tier can merge into an upgraded unit.
 - Retirement cosmetics currency based on at most five wins per tank.
