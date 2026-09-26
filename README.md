@@ -2,7 +2,17 @@
 
 An Android multiplayer roguelite concept inspired by Robocode. The companion project board is in `dist/index.html`, and a playable phone-friendly browser prototype is in `dist/play.html`.
 
-The browser prototype is an early 1-versus-AI tank test. It interprets tactical text with local rules, not an LLM. The project board explicitly shows **LLM in game: None**. Native Android packaging, a free local language model, multiplayer, and 15-unit mixed squads remain planned.
+The prototype is an early 1-versus-AI tank test. The Android USB/local build compiles instructions with **qwen3.5:4b in computer-local Ollama**. The hosted browser uses a rule parser fallback. Multiplayer, phone-native model inference, and 15-unit mixed squads remain planned.
+
+## Test on the connected Android phone
+
+The installed app is **Tank Tactics**. Keep the phone connected by USB for AI testing. Write an instruction, tap **Compile with local AI**, review its range, thresholds and firing policy, then tap **Deploy tank**. Compilation occurs before battle; the model never runs arbitrary code or controls the simulation directly. After editing an instruction or accepting a reward, compile again.
+
+Run `local/start-phone-test.ps1` to restart the computer bridge and USB forwarding after reconnecting. Requires Node, Ollama running on localhost:11434 with qwen3.5:4b installed, and Android platform tools at `%LOCALAPPDATA%/TankTactics/tools/platform-tools`. The bridge listens only on computer loopback at port 8878 and rejects foreign browser origins. Disconnecting USB makes new compilations unavailable; the bundled game can still run using its rule parser.
+
+Build: `android/build.ps1` uses JDK 17, Android platform 36 and build tools 36.0.0 under `%LOCALAPPDATA%/TankTactics`. Output: `android/build/TankTactics-debug.apk`. This is a debug WebView test APK, not a release package. No model is downloaded to the phone. It requests only Internet access, with cleartext restricted to localhost.
+
+Combat now uses a seeded 60 Hz simulation, six-shot magazines, 2.4-second magazine reloads, turret traverse, projectile segment hits, cover and command gates. `node local/combat.test.mjs` checks replay consistency and materially different tactic behavior. Model plans are validated and numeric values are bounded. The preview lets testers inspect model interpretation before deployment; this small model can still misunderstand complex instructions.
 
 ## Game loop
 
@@ -19,7 +29,7 @@ The planned local model will generate structured behavior plans before a match. 
 - Show the interpreted instruction and actual tank actions during combat.
 - Program tank actions through commands rather than equipment-style tactical items.
 - Show the active tank stats in the arena and offer an instruction plus one-round buff after victory.
-- Integrate local prompt generation with an offline free model after the deterministic command loop is solid.
+- Computer-local model compilation is available for USB testing. Generated reward instructions and phone-native inference remain future work.
 - Expand to squads, multiplayer, and roguelite progression after the single-tank loop works.
 
 ## Future scope
