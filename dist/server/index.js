@@ -172,7 +172,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     if ($("rewardDialog").open) $("rewardDialog").close();
     $("prompt").disabled = false;
     $("deploy").disabled = false;
-    $("deploy").textContent = "Deploy unit \u2192";
+    $("deploy").textContent = "Deploy squad \u2192";
     $("result").classList.remove("show");
     $("roundLabel").textContent = "Round 1";
     $("winsLabel").textContent = "Run wins: 0";
@@ -614,7 +614,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     sniper: { name: "Sniper", role: "Accurate long-range single shots", hp: 90, damage: 39, speed: 100, range: 390, reload: 1.4, mag: 4, spread: 0.018, r: 12 }
   };
   const rosterKey = "tank-tactics-roster-v1";
-  let roster = [], selectedId = "", rosterSerial = 0, economy = { credits: 100, slots: 8, reserve: {} };
+  let roster = [], selectedId = "", rosterSerial = 0, economy = { credits: 100, slots: 1, reserve: {} };
   let levelReward = null;
   function newUnit(type, tier = 1) {
     return { id: "unit-" + ++rosterSerial, type, tier, instruction: "", commands: [] };
@@ -655,7 +655,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   } catch {
   }
   if (!roster.length) {
-    for (const type of ["tank", "infantry", "infantry", "infantry", "helicopter", "rocket", "artillery", "sniper"]) roster.push(newUnit(type));
+    roster.push(newUnit("tank"));
     selectedId = roster[0].id;
   }
   function unitStats(u = selectedUnit()) {
@@ -697,7 +697,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
         const s = unitStats(group[0]);
         desc.textContent = unitTypes[type].role + " \xB7 " + s.hp + " HP \xB7 " + s.damage.toFixed(0) + " damage \xB7 " + s.speed.toFixed(0) + " speed";
         const caps = document.createElement("p");
-        caps.textContent = "Commands: " + unlocked(group[0]).map((c) => ({ radar: "Scan", gun: "Fire", drive: "Move", cover: "Cover", duck: "Dodge", perch: "Precision aim", retreat: "Retreat" })[c]).join(", ");
+        caps.textContent = "Order capacity: " + (group[0].tier === 1 ? 3 : group[0].tier === 2 ? 5 : 7) + " \xB7 \u2605\u2605 cover/dodge \xB7 \u2605\u2605\u2605 retreat/precision";
         const select = document.createElement("button");
         select.className = "tiny";
         select.textContent = group.some((u) => u.id === selectedId) ? "Selected" : "Select unit";
@@ -836,7 +836,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     ctx.fillText((t.team === "player" ? "YOU \xB7 " : "AI \xB7 ") + unitTypes[t.type].name + " " + "\u2605".repeat(t.tier), t.x, t.y - 38);
   };
   function slotCost() {
-    return 100 + Math.max(0, economy.slots - 8) * 50;
+    return 100 + Math.max(0, economy.slots - 1) * 50;
   }
   function renderStore() {
     const cost = slotCost();
@@ -897,46 +897,20 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     const root = $("rewards");
     root.replaceChildren();
     $("rewardTitle").textContent = "Level " + round + " rewards";
-    const unitHeader = document.createElement("h3");
-    unitHeader.textContent = levelReward.unit ? "\u2713 Unit reward claimed" : "1 / Unit reward";
-    root.append(unitHeader);
+    const h = document.createElement("h3");
+    h.textContent = levelReward.unit ? "\u2713 Random recruit claimed" : "1 / Random unit reward";
+    root.append(h);
     if (levelReward.unit) {
       const p = document.createElement("p");
       p.textContent = levelReward.unit;
       root.append(p);
     } else {
-      const label = document.createElement("label");
-      label.textContent = "Unit reward type";
-      label.htmlFor = "rewardUnitType";
-      const picker = document.createElement("select");
-      picker.id = "rewardUnitType";
-      picker.style.cssText = "width:100%;padding:10px;background:#223526;color:#edf7e7;border:1px solid #668055;border-radius:8px";
-      for (const [type, data] of Object.entries(unitTypes)) {
-        const option = document.createElement("option");
-        option.value = type;
-        option.textContent = data.name;
-        option.selected = type === (levelReward.offerType || selectedUnit().type);
-        picker.append(option);
-      }
-      picker.onchange = () => {
-        levelReward.offerType = picker.value;
-        renderLevelRewards();
-      };
-      root.append(label, picker);
-      for (const type of [levelReward.offerType || selectedUnit().type]) {
-        root.append(rewardButton("Recruit " + unitTypes[type].name + " \u2605", roster.length < economy.slots ? "Add another unit to the team" : "Team full \xB7 send recruit to reserve", () => chooseReward({ unitType: type, action: "add" })));
-        const targets = roster.filter((u) => u.type === type && u.tier < 3);
-        for (const tier of [1, 2]) {
-          const group = targets.filter((u) => u.tier === tier);
-          if (!group.length) continue;
-          const target = group.find((u) => u.id === selectedId) || group[0];
-          root.append(rewardButton("Upgrade " + unitTypes[type].name + " " + "\u2605".repeat(tier) + " \u2192 " + "\u2605".repeat(tier + 1), "Promote one owned unit immediately \xB7 unlock commands" + (target.id === selectedId ? " \xB7 active unit" : ""), () => chooseReward({ unitType: type, action: "upgrade", unitId: target.id })));
-        }
-      }
+      const type = levelReward.offerType;
+      root.append(rewardButton("Recruit " + unitTypes[type].name + " \u2605", roster.length < economy.slots ? "Add your randomly awarded unit" : "Team full \xB7 recruit waits in reserve", () => chooseReward({ unitType: type, action: "add" })));
     }
-    const tacticHeader = document.createElement("h3");
-    tacticHeader.textContent = levelReward.tactic ? "\u2713 Instruction upgrade claimed" : "2 / Instruction upgrade";
-    root.append(tacticHeader);
+    const th = document.createElement("h3");
+    th.textContent = levelReward.tactic ? "\u2713 Squad instruction claimed" : "2 / Squad instruction upgrade";
+    root.append(th);
     if (levelReward.tactic) {
       const p = document.createElement("p");
       p.textContent = levelReward.tactic.instruction + " " + levelReward.tactic.effect;
@@ -955,7 +929,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   chooseReward = function(option) {
     if (mode !== "won" || !levelReward) return;
     if (option.unitType) {
-      if (levelReward.unit || !unitTypes[option.unitType]) return;
+      if (levelReward.unit || option.action !== "add" || option.unitType !== levelReward.offerType) return;
       saveProgram();
       if (option.action === "upgrade") {
         const u = roster.find((u2) => u2.id === option.unitId && u2.type === option.unitType && u2.tier < 3);
@@ -984,7 +958,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       levelReward.tactic = option;
       nextBuff = option;
       const prior = $("prompt").value.trim();
-      $("prompt").value = prior + (prior ? " " : "") + option.instruction;
+      $("prompt").value = prior + (prior ? "\n" : "") + "# Next-round tactic: " + option.instruction;
       compiledPlan = null;
       compiledText = "";
       saveProgram();
@@ -1017,7 +991,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     if (win) {
       const earnings = 50 + round * 10;
       economy.credits += earnings;
-      levelReward = { unit: null, tactic: null };
+      levelReward = { unit: null, tactic: null, offerType: Object.keys(unitTypes).filter((t) => t !== "boat" || campaign.map === "coast")[Math.floor(random() * Object.keys(unitTypes).filter((t) => t !== "boat" || campaign.map === "coast").length)] };
       $("reset").disabled = true;
       saveRoster();
       renderRoster();
@@ -1258,8 +1232,8 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     const squad2 = roster.filter((u) => u.deployed !== false && (!unitTypes[u.type].water || campaign.map === "coast")).slice(0, 15);
     const team = squad2.length ? squad2 : [selectedUnit()];
     battleUnits = team.map((u, i) => spawnCombat(u, "player", i, team.length));
-    for (let i = 0; i < team.length; i++) {
-      const types2 = Object.keys(unitTypes).filter((t) => !unitTypes[t].water || campaign.map === "coast"), type = types2[(i + round - 1) % types2.length];
+    for (let i = 0; i < Math.min(15, 1 + Math.floor((round - 1) / 2)); i++) {
+      const types2 = Object.keys(unitTypes).filter((t) => !unitTypes[t].water || campaign.map === "coast"), type = round === 1 ? "tank" : types2[(i + round - 1) % types2.length];
       battleUnits.push(spawnCombat({ id: "enemy-" + i, type, tier: Math.min(3, 1 + Math.floor((round - 1) / 4)), equipment: {} }, "enemy", i, team.length));
     }
     player = battleUnits.find((u) => u.id === selectedId) || battleUnits[0];
@@ -1361,6 +1335,16 @@ function createEngine(a, b, map, initialSeed, restored = null) {
         mx = point[0] - t.x;
         my = point[1] - t.y;
         action = "Seeking cover";
+      }
+    } else if (formationVector(t, foe)) {
+      const formation = formationVector(t, foe);
+      mx = formation.mx;
+      my = formation.my;
+      action = formation.action;
+      if ((mx || my) && !t.stats.flying && lineBlocked(t.x, t.y, t.x + mx, t.y + my)) {
+        const waypoint = pathStep(t, { x: t.x + mx, y: t.y + my });
+        mx = waypoint[0] - t.x;
+        my = waypoint[1] - t.y;
       }
     } else if (blocked) {
       t.pathClock = (t.pathClock || 0) - dt;
@@ -1877,6 +1861,222 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   $("createMatch").onclick = () => matchAction("create");
   $("joinMatch").onclick = () => matchAction("join");
   $("reconnectMatch").onclick = pollMatch;
+  const defaultSquadScript = "leader tank-1\nall stance balanced\nall focus nearest\nall follow leader";
+  let squadScript = defaultSquadScript, orderCache = /* @__PURE__ */ new Map();
+  try {
+    squadScript = localStorage.getItem("tank-squad-script-v1") || defaultSquadScript;
+    const migration = rosterKey + "-single-tank-v2";
+    if (!localStorage.getItem(migration)) {
+      localStorage.setItem(rosterKey + "-legacy-archive", JSON.stringify({ version: 1, units: roster }));
+      roster = [newUnit("tank")];
+      selectedId = roster[0].id;
+      economy.slots = 1;
+      economy.reserve = {};
+      localStorage.setItem(migration, "1");
+      saveRoster();
+    }
+  } catch {
+  }
+  function parseSquadScript(text) {
+    if (orderCache.has(text)) return orderCache.get(text);
+    if (text.length > 3e3) throw Error("Squad script is limited to 3000 characters");
+    const rules = [], errors = [];
+    let leader = "tank-1";
+    const selector = "(?:all|tank|infantry|helicopter|rocket|artillery|sniper|boat|(?:tank|infantry|helicopter|rocket|artillery|sniper|boat)-[1-9][0-9]?)";
+    for (const [i, raw] of text.split("\n").entries()) {
+      const line = raw.trim().toLowerCase();
+      if (!line || line.startsWith("#")) continue;
+      let m;
+      if (m = line.match(/^leader ((?:tank|infantry|helicopter|rocket|artillery|sniper|boat)-[1-9][0-9]?)$/)) {
+        leader = m[1];
+        continue;
+      }
+      if (m = line.match(new RegExp("^(" + selector + ") (follow|protect|flank) (leader|(?:tank|infantry|helicopter|rocket|artillery|sniper|boat)-[1-9][0-9]?)$"))) rules.push({ selector: m[1], kind: "formation", mode: m[2], anchor: m[3] });
+      else if (m = line.match(new RegExp("^(" + selector + ") focus (nearest|weakest|leader)$"))) rules.push({ selector: m[1], kind: "focus", value: m[2] });
+      else if (m = line.match(new RegExp("^(" + selector + ") hold ([0-9]{2,3})$"))) rules.push({ selector: m[1], kind: "range", value: clamp(+m[2], 100, 500) });
+      else if (m = line.match(new RegExp("^(" + selector + ") stance (rush|balanced|sniper)$"))) rules.push({ selector: m[1], kind: "stance", value: m[2] });
+      else if (m = line.match(new RegExp("^(" + selector + ") retreat below ([0-9]{1,2})%$"))) rules.push({ selector: m[1], kind: "retreat", value: clamp(+m[2] / 100, 0.05, 0.8) });
+      else errors.push("Line " + (i + 1) + ": unknown order \u201C" + raw.trim() + "\u201D");
+    }
+    const result = { leader, rules, errors };
+    if (orderCache.size > 50) orderCache.clear();
+    orderCache.set(text, result);
+    return result;
+  }
+  function callsign(t) {
+    const peers = battleUnits.filter((u) => u.team === t.team && u.type === t.type);
+    return t.type + "-" + (peers.indexOf(t) + 1);
+  }
+  function scriptFor(t) {
+    return t.squadScript || squadScript;
+  }
+  function leaderFor(t) {
+    const own = battleUnits.filter((u) => u.team === t.team && u.hp > 0);
+    const name = parseSquadScript(scriptFor(t)).leader;
+    return own.find((u) => callsign(u) === name) || own.find((u) => u.type === "tank") || own[0];
+  }
+  function ordersFor(t) {
+    const script = parseSquadScript(scriptFor(t)), name = callsign(t), capacity = t.tier === 1 ? 3 : t.tier === 2 ? 5 : 7, result = {};
+    let count = 0;
+    for (const rule of script.rules) {
+      if (rule.selector !== "all" && rule.selector !== t.type && rule.selector !== name) continue;
+      if (++count > capacity) break;
+      if (rule.kind === "retreat" && t.tier < 3) continue;
+      result[rule.kind] = rule;
+    }
+    return result;
+  }
+  function formationVector(t, foe) {
+    const order = ordersFor(t).formation;
+    if (!order) return null;
+    const anchor = order.anchor === "leader" ? leaderFor(t) : battleUnits.find((u) => u.team === t.team && u.hp > 0 && callsign(u) === order.anchor);
+    if (!anchor || anchor === t) return null;
+    const peers = battleUnits.filter((u) => u.team === t.team && u.hp > 0 && u !== anchor), i = peers.indexOf(t), angle = anchor.heading + Math.PI + (i % 3 - 1) * 0.65;
+    let x = anchor.x + Math.cos(angle) * (70 + Math.floor(i / 3) * 35), y = anchor.y + Math.sin(angle) * (70 + Math.floor(i / 3) * 35);
+    if (order.mode === "protect" && foe) {
+      const [nx, ny] = norm(foe.x - anchor.x, foe.y - anchor.y);
+      x = anchor.x + nx * 70;
+      y = anchor.y + ny * 70 + (i % 2 ? 25 : -25);
+    }
+    if (order.mode === "flank" && foe) {
+      const [nx, ny] = norm(foe.x - anchor.x, foe.y - anchor.y);
+      x = foe.x - ny * (i % 2 ? -120 : 120);
+      y = foe.y + nx * (i % 2 ? -120 : 120);
+    }
+    const distance = Math.hypot(x - t.x, y - t.y);
+    return { mx: distance > 28 ? x - t.x : 0, my: distance > 28 ? y - t.y : 0, action: order.mode === "protect" ? "Protecting " + callsign(anchor) : order.mode === "flank" ? "Flanking target" : "Following " + callsign(anchor) };
+  }
+  const soloTarget = chooseTarget;
+  chooseTarget = function(t) {
+    const order = ordersFor(t), leader = leaderFor(t), anchor = order.formation?.mode === "protect" ? order.formation.anchor === "leader" ? leader : battleUnits.find((u) => u.team === t.team && callsign(u) === order.formation.anchor) : null;
+    const foes = battleUnits.filter((u) => u.team !== t.team && u.hp > 0 && Math.hypot(u.x - t.x, u.y - t.y) < t.stats.radarRange * u.stats.stealthSignature);
+    if (!foes.length) return null;
+    if (anchor) {
+      const threatening = foes.filter((u) => Math.hypot(u.x - anchor.x, u.y - anchor.y) < 450);
+      if (threatening.length) return threatening.sort((a2, b2) => Math.hypot(a2.x - anchor.x, a2.y - anchor.y) - Math.hypot(b2.x - anchor.x, b2.y - anchor.y))[0];
+    }
+    if (order.focus?.value === "weakest") return foes.sort((a2, b2) => a2.hp / a2.maxHp - b2.hp / b2.maxHp)[0];
+    if (order.focus?.value === "leader" && leader !== t && foes.includes(leader?.target)) return leader.target;
+    if (order.focus) return foes.sort((a2, b2) => Math.hypot(a2.x - (leader || t).x, a2.y - (leader || t).y) - Math.hypot(b2.x - (leader || t).x, b2.y - (leader || t).y))[0];
+    return soloTarget(t);
+  };
+  const autonomousTick = squadTick;
+  squadTick = function(t, dt) {
+    const order = ordersFor(t);
+    if (order.range) t.plan.preferred = order.range.value;
+    if (order.stance) {
+      t.plan.style = order.stance.value;
+      if (!order.range && !t.plan.modelApplied) t.plan.preferred = order.stance.value === "rush" ? 145 : order.stance.value === "sniper" ? 360 : t.stats.range;
+    }
+    if (order.retreat) {
+      t.plan.retreat = true;
+      t.plan.retreatBelow = order.retreat.value;
+    }
+    autonomousTick(t, dt);
+  };
+  commandRender = function() {
+    commands2 = new Set(unlocked(selectedUnit()));
+    $("commands").replaceChildren();
+  };
+  saveProgram = function() {
+    squadScript = $("prompt").value;
+    for (const u of roster) {
+      u.instruction = squadScript;
+      u.squadScript = squadScript;
+      u.commands = unlocked(u);
+      u.compiled = compiledPlan;
+      u.compiledText = compiledText;
+    }
+    try {
+      localStorage.setItem("tank-squad-script-v1", squadScript);
+    } catch {
+    }
+    saveRoster();
+  };
+  activateUnit = function(id, skipSave = false) {
+    if (mode === "running" || mode === "won" || compiling) return;
+    if (!skipSave) saveProgram();
+    selectedId = id;
+    commandRender();
+    $("prompt").value = squadScript;
+    saveRoster();
+    resetPositions();
+    preview();
+    renderRoster();
+  };
+  planForUnit = function(u) {
+    const p = u.compiled && u.compiledText === u.instruction ? { ...u.compiled } : { style: "balanced", preferred: unitStats(u).range, cover: u.tier >= 2, coverBelow: 0.5, evade: u.tier >= 2, retreat: false, retreatBelow: 0.25, firePolicy: "always" };
+    p.modelApplied = !!(u.compiled && u.compiledText === u.instruction);
+    p.cover = p.cover && u.tier >= 2;
+    p.evade = p.evade && u.tier >= 2;
+    p.retreat = p.retreat && u.tier >= 3;
+    return p;
+  };
+  const unitSpawn = spawnCombat;
+  spawnCombat = function(u, team, index, count) {
+    const t = unitSpawn(u, team, index, count);
+    t.squadScript = u.squadScript || (team === "player" ? squadScript : "leader tank-1\nall focus weakest\nall follow leader");
+    t.commands = unlocked(u);
+    return t;
+  };
+  const personalPreview = preview;
+  preview = function() {
+    squadScript = $("prompt").value || defaultSquadScript;
+    personalPreview();
+    const parsed = parseSquadScript(squadScript);
+    $("planPreview").textContent = parsed.errors.length ? parsed.errors.join(" \xB7 ") : parsed.rules.length + " squad orders \xB7 Leader " + parsed.leader + (compiledPlan && compiledText === squadScript ? " \xB7 Local AI stance: " + compiledPlan.style + " / " + compiledPlan.preferred + " range" : " \xB7 Deterministic orders ready");
+    $("scriptRoster").textContent = "Unit callsigns: " + roster.map((u, i) => u.type + "-" + roster.slice(0, i + 1).filter((x) => x.type === u.type).length).join(", ");
+  };
+  const orderDeploy = deploy;
+  deploy = function() {
+    saveProgram();
+    const parsed = parseSquadScript(squadScript);
+    if (parsed.errors.length) {
+      $("message").textContent = "Fix the script before deploying: " + parsed.errors.join(" \xB7 ");
+      return;
+    }
+    orderDeploy();
+  };
+  $("deploy").onclick = () => deploy();
+  const continueRunReset = resetRun;
+  resetRun = function() {
+    if (compiling) return;
+    if (replaying) restoreReplay();
+    roster = [newUnit("tank")];
+    selectedId = roster[0].id;
+    economy.reserve = {};
+    squadScript = defaultSquadScript;
+    compiledPlan = null;
+    compiledText = "";
+    $("prompt").value = squadScript;
+    commands2 = new Set(unlocked(roster[0]));
+    continueRunReset();
+    saveProgram();
+    $("message").textContent = "New run: one tank versus one AI tank. Recruit allies from victory rewards.";
+  };
+  $("reset").onclick = () => resetRun();
+  for (const u of roster) {
+    u.instruction = squadScript;
+    u.squadScript = squadScript;
+    u.commands = unlocked(u);
+  }
+  $("prompt").value = squadScript;
+  const archivedButton = document.createElement("button");
+  archivedButton.className = "tiny";
+  archivedButton.textContent = "Export previous test collection";
+  archivedButton.onclick = () => {
+    try {
+      $("transferData").value = localStorage.getItem(rosterKey + "-legacy-archive") || "";
+      $("transferMessage").textContent = "Previous test collection preserved for export.";
+    } catch {
+    }
+  };
+  $("transferDialog").append(archivedButton);
+  const exportSquad = $("exportUnits").onclick;
+  $("exportUnits").onclick = () => {
+    saveProgram();
+    exportSquad();
+  };
   const initial = selectedUnit();
   selectedId = initial.id;
   commands2 = new Set((initial.instruction ? initial.commands : unlocked(initial)).filter((c) => unlocked(initial).includes(c)));
@@ -1890,6 +2090,8 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   updateBuffStatus();
   requestAnimationFrame(frame);
   roster = a;
+  squadScript = a[0].squadScript || defaultSquadScript;
+  $("prompt").value = squadScript;
   selectedId = a[0].id;
   campaign.map = map;
   round = 1;
@@ -1952,7 +2154,7 @@ function squad(input, prefix) {
     let compiled = null;
     const p = u.compiled;
     if (p && ["rush", "balanced", "sniper"].includes(p.style) && ["always", "inRange", "stationary"].includes(p.firePolicy)) compiled = { style: p.style, preferred: Math.max(100, Math.min(500, Number(p.preferred) || 255)), cover: allowed.includes("cover") && !!p.cover, evade: allowed.includes("duck") && !!p.evade, retreat: allowed.includes("retreat") && !!p.retreat, coverBelow: Math.max(0, Math.min(0.9, Number(p.coverBelow) || 0.5)), retreatBelow: Math.max(0, Math.min(0.8, Number(p.retreatBelow) || 0.25)), firePolicy: p.firePolicy, explanation: "" };
-    return { id: prefix + i, type: u.type, tier: u.tier, instruction: u.instruction, commands: Array.isArray(u.commands) ? u.commands.filter((c) => allowed.includes(c)) : allowed, equipment: gear, compiled, compiledText: u.instruction };
+    return { id: prefix + i, type: u.type, tier: u.tier, instruction: u.instruction, squadScript: typeof u.squadScript === "string" && u.squadScript.length <= 3e3 ? u.squadScript : "leader tank-1\nall focus nearest\nall follow leader", commands: Array.isArray(u.commands) ? u.commands.filter((c) => allowed.includes(c)) : allowed, equipment: gear, compiled, compiledText: u.instruction };
   });
 }
 var json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
