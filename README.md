@@ -42,3 +42,5 @@ helicopter flank leader
 ```
 
 Use one order per line. Selectors are `all`, unit types, or callsigns such as `tank-1`. Later matching orders override earlier settings, within each unit’s order capacity. Unknown lines prevent deployment. Comments begin with `#`. Leaders switch to a surviving ally when lost. Retiring and combining units remain separate actions.
+
+Field bases are campaign structures: build repair stations, ammo depots and cover walls in three fixed rear areas, then upgrade them with credits. They persist across runs and are recorded in campaign replays. Invite matches exclude field-base bonuses.

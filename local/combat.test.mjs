@@ -28,8 +28,9 @@ function simulate(instruction,modelPlan=null){
  const original=roster.length;let rejected=false;try{safeImportedUnits({version:1,units:[{type:'invalid',tier:1}]})}catch{rejected=true}if(!rejected)throw Error('Invalid imports accepted');gearUnit.wins=99;const coins=campaign.cosmeticCoins;retireUnit();if(campaign.cosmeticCoins!==coins+5||roster.length!==original-1)throw Error('Retirement cap failed');
  for(let i=0;i<3;i++){mode='running';finish(false)}if(campaign.lives!==0)throw Error('Run must end after three defeats');resetRun();if(campaign.lives!==3||roster.length!==1||battleUnits.filter(t=>t.team==='enemy').length!==1)throw Error('New run must restore one tank and lives');
  roster.push(newUnit('infantry',2),newUnit('sniper'));$('prompt').value='leader tank-1\nall follow leader\ninfantry protect leader\nall focus weakest';saveProgram();resetPositions();const ally=battleUnits.find(t=>t.team==='player'&&t.type==='infantry'),leader=battleUnits.find(t=>t.team==='player'&&t.type==='tank');const enemyA=battleUnits.find(t=>t.team==='enemy');enemyA.x=leader.x+200;enemyA.y=leader.y;const vector=formationVector(ally,enemyA);if(!vector.action.startsWith('Protecting')||ally.x+vector.mx<=leader.x)throw Error('Protection must screen the leader');const sniper=battleUnits.find(t=>t.type==='sniper');if(!formationVector(sniper,enemyA).action.startsWith('Following'))throw Error('Follow must retain formation');if(chooseTarget(ally)!==enemyA)throw Error('Squad must share target');if(!parseSquadScript('all execute arbitrary code').errors.length)throw Error('Unknown orders rejected');resetRun();
- 
- 
+
+
+ mode='ready';campaign.base=[];economy.credits=1000;buildBase(0,'repair');const support=battleUnits.find(t=>t.team==='player');support.x=150;support.y=80;support.hp=100;fieldBaseSupport(support,1);if(support.hp!==102)throw Error('Base repairs must heal');buildBase(1,'ammo');const supplied=battleUnits.find(t=>t.team==='player');supplied.x=150;supplied.y=230;supplied.reserve=50;fieldBaseSupport(supplied,1);if(supplied.reserve!==58)throw Error('Ammo depot must supply reserve');buildBase(2,'wall');const width=rocks.at(-1).w;upgradeBase(2);if(rocks.at(-1).w<=width)throw Error('Wall upgrade must improve screen');campaign.base=[];resetPositions();
  `,context);
  document.getElementById('prompt').value='leader tank-1\nall stance '+(/snip/i.test(instruction)?'sniper':'rush')+'\nall focus nearest';vm.runInContext('preview()',context);
  if(modelPlan)vm.runInContext('compiledPlan='+JSON.stringify(modelPlan)+';compiledText=$("prompt").value;',context);
@@ -42,6 +43,3 @@ assert.notEqual(rush.x,sniper.x);assert.ok(rush.events>0||sniper.events>0,'comba
 const custom=simulate('Unusual tactics',{style:'balanced',preferred:400,cover:true,coverBelow:.8,evade:true,retreat:true,retreatBelow:.3,firePolicy:'inRange',explanation:'test'});
 assert.equal(custom.plan.preferred,400);assert.equal(custom.plan.retreatBelow,.3);assert.ok(Number.isFinite(custom.x));
 console.log(JSON.stringify({rush,sniper,custom},null,2));
-
-
-

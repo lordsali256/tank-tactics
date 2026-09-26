@@ -1042,6 +1042,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   function applyMap() {
     if (!maps[campaign.map]) campaign.map = "urban";
     rocks.splice(0, rocks.length, ...maps[campaign.map].map((o) => ({ ...o })));
+    for (const b2 of campaign.base || []) if (b2.kind === "wall" && !onlinePlaying) rocks.push({ x: b2.x - 18 - (b2.tier - 1) * 4, y: b2.y - 40, w: 36 + (b2.tier - 1) * 8, h: 80 });
     $("mapSelect").value = campaign.map;
     $("viewSelect").value = campaign.view;
   }
@@ -1318,8 +1319,10 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     const foe = t.target;
     if (!foe || foe.hp <= 0) {
       if (t.commands.includes("drive")) {
+        const formation = formationVector(t, null);
         t.velocity = Math.min(s.speed, t.velocity + s.acceleration * dt);
-        squadMove(t, t.team === "player" ? 1 : -1, Math.sin(t.phase) * 0.3, dt);
+        squadMove(t, formation ? formation.mx : t.team === "player" ? 1 : -1, formation ? formation.my : Math.sin(t.phase) * 0.3, dt);
+        if (t.id === selectedId && formation) updateProgramLive(formation.action);
       }
       return;
     }
@@ -1415,6 +1418,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     if (mode !== "running") return;
     elapsed += dt;
     for (const t of battleUnits) {
+      fieldBaseSupport(t, dt);
       squadTick(t, dt);
       if (t.hp > 0) for (const pickup of pickups) {
         if (!pickup.used && Math.hypot(t.x - pickup.x, t.y - pickup.y) < t.stats.pickupRadius) {
@@ -1486,7 +1490,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     }
     squadDeploy();
     if (mode === "running") {
-      replayInputs = JSON.parse(JSON.stringify({ roster, selectedId, map: campaign.map, round, prompt: $("prompt").value, commands: [...commands2], compiledPlan, compiledText, activeBuff }));
+      replayInputs = JSON.parse(JSON.stringify({ roster, selectedId, map: campaign.map, base: campaign.base, round, prompt: $("prompt").value, commands: [...commands2], compiledPlan, compiledText, activeBuff }));
       $("mapSelect").disabled = true;
     }
   };
@@ -1617,6 +1621,9 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       ctx.textAlign = "center";
       ctx.fillText(unitTypes[t.type].name, p[0], p[1] - 8);
     }
+    for (const b2 of onlinePlaying ? [] : campaign.base || []) {
+      prism(b2.x - 16, b2.y - 16, 32, 32, 40, b2.kind === "repair" ? "#68bfc0" : b2.kind === "ammo" ? "#e8b66d" : "#526849");
+    }
     for (const s of shots) {
       const p = project3D(s.x, s.y, s.indirect ? 50 : 15);
       ctx.fillStyle = "#fff6af";
@@ -1697,6 +1704,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     selectedId = replayRecord.selectedId;
     round = replayRecord.round;
     campaign.map = replayRecord.map;
+    campaign.base = JSON.parse(JSON.stringify(replayRecord.base || []));
     commands2 = new Set(replayRecord.commands);
     compiledPlan = replayRecord.compiledPlan;
     compiledText = replayRecord.compiledText;
@@ -2077,6 +2085,94 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     saveProgram();
     exportSquad();
   };
+  if (!Array.isArray(campaign.base)) campaign.base = [];
+  const baseLocations = [{ name: "North field", x: 150, y: 80 }, { name: "Central field", x: 150, y: 230 }, { name: "South field", x: 150, y: 410 }];
+  const baseTypes = { repair: { name: "Repair station", price: 100, description: "Restores 2 hull per second per tier within 110 range." }, ammo: { name: "Ammo depot", price: 120, description: "Supplies 8 reserve rounds per tier every 5 seconds within 110 range." }, wall: { name: "Cover wall", price: 80, description: "Blocks direct shots and ground movement. Upgrades make the screen wider." } };
+  function buildBase(site, kind) {
+    if (mode === "running" || compiling) return;
+    const point = baseLocations[site], type = baseTypes[kind];
+    if (!point || !type || campaign.base.some((b2) => b2.site === site) || economy.credits < type.price) return;
+    economy.credits -= type.price;
+    campaign.base.push({ site, kind, tier: 1, x: point.x, y: point.y });
+    saveRoster();
+    resetPositions();
+    renderBase();
+    renderRoster();
+    $("baseMessage").textContent = type.name + " constructed.";
+  }
+  function upgradeBase(site) {
+    if (mode === "running" || compiling) return;
+    const b2 = campaign.base.find((b3) => b3.site === site);
+    if (!b2 || b2.tier >= 3) return;
+    const cost = 70 * b2.tier;
+    if (economy.credits < cost) return;
+    economy.credits -= cost;
+    b2.tier++;
+    saveRoster();
+    resetPositions();
+    renderBase();
+    renderRoster();
+  }
+  function renderBase() {
+    const root = $("baseSites");
+    root.replaceChildren();
+    $("baseBalance").textContent = economy.credits + " credits \xB7 " + campaign.base.length + "/3 structures";
+    for (let i = 0; i < baseLocations.length; i++) {
+      const card = document.createElement("div");
+      card.className = "unit-card";
+      const title = document.createElement("h3");
+      title.textContent = baseLocations[i].name;
+      card.append(title);
+      const b2 = campaign.base.find((b3) => b3.site === i);
+      if (b2) {
+        const p = document.createElement("p");
+        p.textContent = baseTypes[b2.kind].name + " " + "\u2605".repeat(b2.tier) + " \xB7 " + baseTypes[b2.kind].description;
+        const upgrade = document.createElement("button");
+        upgrade.className = "tiny";
+        upgrade.textContent = b2.tier === 3 ? "Maximum tier" : "Upgrade \xB7 " + 70 * b2.tier + " credits";
+        upgrade.disabled = b2.tier >= 3 || economy.credits < 70 * b2.tier || mode === "running" || compiling;
+        upgrade.onclick = () => upgradeBase(i);
+        card.append(p, upgrade);
+      } else for (const [kind, type] of Object.entries(baseTypes)) {
+        const button = document.createElement("button");
+        button.className = "tiny";
+        button.textContent = type.name + " \xB7 " + type.price + " credits";
+        button.disabled = economy.credits < type.price || mode === "running" || compiling;
+        button.onclick = () => buildBase(i, kind);
+        card.append(button);
+      }
+      root.append(card);
+    }
+  }
+  function fieldBaseSupport(t, dt) {
+    if (t.team !== "player" || t.hp <= 0) return;
+    for (const b2 of campaign.base || []) {
+      if (Math.hypot(t.x - b2.x, t.y - b2.y) > 110) continue;
+      if (b2.kind === "repair") t.hp = Math.min(t.maxHp, t.hp + 2 * b2.tier * dt);
+      if (b2.kind === "ammo" && elapsed >= (t.supplyAt || 0)) {
+        t.reserve = Math.min(250, t.reserve + 8 * b2.tier);
+        t.supplyAt = elapsed + 5;
+      }
+    }
+  }
+  const tacticalDraw = draw;
+  draw = function() {
+    tacticalDraw();
+    if (campaign.view === "3d" || onlinePlaying) return;
+    for (const b2 of campaign.base || []) {
+      ctx.fillStyle = b2.kind === "repair" ? "#68bfc0" : b2.kind === "ammo" ? "#e8b66d" : "#526849";
+      ctx.fillRect(b2.x - 14, b2.y - 14, 28, 28);
+      ctx.fillStyle = "#08170d";
+      ctx.font = "bold 18px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(b2.kind === "repair" ? "+" : b2.kind === "ammo" ? "A" : "W", b2.x, b2.y + 6);
+    }
+  };
+  $("baseButton").onclick = () => {
+    renderBase();
+    $("baseDialog").showModal();
+  };
+  $("closeBase").onclick = () => $("baseDialog").close();
   const initial = selectedUnit();
   selectedId = initial.id;
   commands2 = new Set((initial.instruction ? initial.commands : unlocked(initial)).filter((c) => unlocked(initial).includes(c)));
