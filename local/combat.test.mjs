@@ -9,7 +9,7 @@ function simulate(instruction,modelPlan=null){
  const context=vm.createContext({document,localStorage:{getItem:()=>null,setItem(){},removeItem(){}},window:{},setTimeout,clearTimeout,performance:{now:()=>0},requestAnimationFrame(){},AbortSignal,fetch:async()=>{throw Error('test')},Math,console,confirm:()=>true});vm.runInContext(script,context);
  document.getElementById('prompt').value='leader tank-1\nall stance '+(/snip/i.test(instruction)?'sniper':'rush')+'\nall focus nearest';vm.runInContext('preview()',context);
  vm.runInContext(String.raw`
- if(roster.length!==1||roster[0].type!=='tank'||battleUnits.length!==2)throw Error('Run must start 1 tank vs 1 tank');if(enemy.hp!==120||enemy.maxHp!==120||player.hp!==160||!enemy.aiControlled||player.aiControlled)throw Error('Round 1 AI must have 120 HP and independent controls');mode='running';for(let n=0;n<180;n++)update(1/60);if(Math.abs(player.y-enemy.y)<10)throw Error('AI approach must differ from player movement');mode='ready';resetPositions();roster.push(newUnit('infantry'),newUnit('infantry'),newUnit('infantry'));economy.slots=8;activateUnit(roster.find(u=>u.type==='infantry').id);const before=roster.length;combineUnits('infantry',1);
+ if(roster.length!==1||roster[0].type!=='tank'||battleUnits.length!==2)throw Error('Run must start 1 tank vs 1 tank');if(enemy.hp!==120||enemy.maxHp!==120||player.hp!==160||!enemy.aiControlled||player.aiControlled)throw Error('Round 1 AI must have 120 HP and independent controls');mode='running';for(let n=0;n<180;n++)update(1/60);if(Math.abs(player.y-enemy.y)<10)throw Error('AI approach must differ from player movement');mode='ready';resetPositions();roster.push(newUnit('infantry'),newUnit('infantry'),newUnit('infantry'));economy.slots=12;activateUnit(roster.find(u=>u.type==='infantry').id);const before=roster.length;combineUnits('infantry',1);
  if(roster.length!==before-2||roster.filter(u=>u.type==='infantry'&&u.tier===2).length!==1)throw Error('Combine must consume exactly three matches');
  const upgrade=roster.find(u=>u.type==='infantry');if(!unlocked(upgrade).includes('duck')||unlocked(upgrade).includes('perch')||!commands.has('duck')||selectedUnit().id!==upgrade.id)throw Error('Tier commands incorrect');
  const count=roster.length;combineUnits('infantry',2);if(roster.length!==count)throw Error('Insufficient copies must not combine');
@@ -43,4 +43,6 @@ assert.notEqual(rush.x,sniper.x);assert.ok(rush.events>0||sniper.events>0,'comba
 const custom=simulate('Unusual tactics',{style:'balanced',preferred:400,cover:true,coverBelow:.8,evade:true,retreat:true,retreatBelow:.3,firePolicy:'inRange',explanation:'test'});
 assert.equal(custom.plan.preferred,400);assert.equal(custom.plan.retreatBelow,.3);assert.ok(Number.isFinite(custom.x));
 console.log(JSON.stringify({rush,sniper,custom},null,2));
+
+
 

@@ -3,6 +3,9 @@ import {build} from 'esbuild';
 fs.mkdirSync('dist/server',{recursive:true});
 const renderer=await build({entryPoints:['client/arena-3d.js'],bundle:true,format:'iife',platform:'browser',minify:true,write:false});
 let page=fs.readFileSync('dist/play.html','utf8').replace(/\n<!-- WEBGL_RENDERER -->[\s\S]*?<!-- END_WEBGL_RENDERER -->/,'');
+const language=fs.readFileSync('client/squad-language.js','utf8');
+page=page.replace(/\/\/ SQUAD_LANGUAGE_START[\s\S]*?\/\/ SQUAD_LANGUAGE_END\n?/,'');
+page=page.replace('const initial=selectedUnit();',()=> '// SQUAD_LANGUAGE_START\n'+language+'\n// SQUAD_LANGUAGE_END\nconst initial=selectedUnit();');
 page=page.replace('</body>', ()=> '\n<!-- WEBGL_RENDERER -->\n<script>'+renderer.outputFiles[0].text.replace(/<\/script/gi,'<\\/script')+'</script>\n<!-- END_WEBGL_RENDERER -->\n</body>');
 fs.writeFileSync('dist/play.html',page);
 const source=fs.readFileSync('dist/play.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
@@ -15,7 +18,7 @@ if(restored){battleUnits=restored.battleUnits;for(const t of battleUnits)t.targe
 return{tick(seconds){const steps=Math.max(0,Math.min(120,Math.floor(seconds*60)));for(let i=0;i<steps&&mode==='running';i++)update(1/60)},state(){return JSON.parse(JSON.stringify({mode,elapsed,seed,battleUnits:battleUnits.map(t=>({...t,target:null,targetId:t.target?.id||null})),shots,sparks,pickups,buildings,damageEvents},(key,value)=>key==='target'?undefined:value))}};
 }
 `;
-fs.writeFileSync('dist/server/engine.mjs',prologue+source+epilogue);
+fs.writeFileSync('dist/server/engine.mjs',prologue+source+epilogue.replace('t.angle=Math.PI;t.heading=Math.PI;','t.homeX=t.x;t.homeY=t.y;t.angle=Math.PI;t.heading=Math.PI;'));
 fs.copyFileSync('cloud/worker.mjs','dist/server/index.js');
 const bundled=await build({entryPoints:['dist/server/index.js'],bundle:true,format:'esm',platform:'browser',write:false});
 fs.writeFileSync('dist/server/index.js',bundled.outputFiles[0].contents);

@@ -28,12 +28,14 @@ public class MainActivity extends Activity {
   frame.setOnApplyWindowInsetsListener((v,insets)->{v.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());return insets;});frame.requestApplyInsets();
   loadPage("play.html");
   if(getIntent().hasExtra("ai_test"))phoneAI.compile(getIntent().getStringExtra("ai_test"),-1);
+  if(getIntent().hasExtra("ai_test_b64"))phoneAI.compile(decodeTest(getIntent()),-1);
  }
  private void loadPage(String name){try(InputStream in=getAssets().open(name);ByteArrayOutputStream out=new ByteArrayOutputStream()){
   byte[] buf=new byte[8192];int n;while((n=in.read(buf))!=-1)out.write(buf,0,n);
   web.loadDataWithBaseURL("http://127.0.0.1:8878/",out.toString("UTF-8"),"text/html","UTF-8",null);
  }catch(Exception e){web.loadData("Unable to load Tank Tactics.","text/html","UTF-8");}}
- @Override protected void onNewIntent(android.content.Intent intent){super.onNewIntent(intent);if(intent.hasExtra("ai_test"))phoneAI.compile(intent.getStringExtra("ai_test"),-1);}
+ private String decodeTest(android.content.Intent intent){try{return new String(android.util.Base64.decode(intent.getStringExtra("ai_test_b64"),android.util.Base64.DEFAULT),"UTF-8");}catch(Exception e){return "";}}
+ @Override protected void onNewIntent(android.content.Intent intent){super.onNewIntent(intent);if(intent.hasExtra("ai_test"))phoneAI.compile(intent.getStringExtra("ai_test"),-1);if(intent.hasExtra("ai_test_b64"))phoneAI.compile(decodeTest(intent),-1);}
  @Override protected void onPause(){super.onPause();web.onPause();}
  @Override protected void onResume(){super.onResume();if(web!=null)web.onResume();}
  @Override protected void onDestroy(){phoneAI.close();web.destroy();super.onDestroy();}
