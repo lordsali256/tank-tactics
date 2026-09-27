@@ -17,3 +17,18 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+  ollama:
+    image: ollama/ollama:latest
+    container_name: tank-tactics-ollama
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      OLLAMA_HOST: 127.0.0.1:11434
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+    volumes:
+      - ./ollama:/root/.ollama
+    cpus: 6
+    mem_limit: 12g
+    security_opt:
+      - no-new-privileges:true

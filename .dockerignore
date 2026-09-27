@@ -2,6 +2,7 @@
 node_modules
 android
 data
+ollama
 *.tar
 *.tar.gz
 *.zip
