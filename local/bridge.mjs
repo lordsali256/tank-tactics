@@ -2,6 +2,7 @@ import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {matchRequest} from './matches.mjs';
+import {generateCoach} from './coach.mjs';
 const model='qwen3.5:4b', port=8878;
 const schema={type:'object',additionalProperties:false,required:['style','preferred','cover','coverBelow','evade','retreat','retreatBelow','firePolicy','explanation'],properties:{style:{type:'string',enum:['rush','balanced','sniper']},preferred:{type:'integer',minimum:100,maximum:450},cover:{type:'boolean'},coverBelow:{type:'number',minimum:0,maximum:1},evade:{type:'boolean'},retreat:{type:'boolean'},retreatBelow:{type:'number',minimum:0,maximum:1},firePolicy:{type:'string',enum:['always','inRange','stationary']},explanation:{type:'string'}}};
 export function validatePlan(p){
@@ -18,6 +19,7 @@ const server=http.createServer(async(req,res)=>{
  if(req.headers.origin&&req.headers.origin!==`http://127.0.0.1:${port}`&&req.headers.origin!==`http://localhost:${port}`)return send(403,{error:'Open the local game to use the model.'});
  try{
  const pathname=new URL(req.url,'http://localhost').pathname;
+ if(pathname==='/api/coach'&&req.method==='POST'){let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>160000)return send(413,{error:'Battle report too large.'})}const controller=new AbortController();res.on('close',()=>{if(!res.writableEnded)controller.abort()});return send(200,await generateCoach(JSON.parse(raw),{signal:controller.signal}));}
  if(pathname.startsWith('/api/matches'))return send(200,await matchRequest(req,new URL(req.url,'http://localhost')));
  if(pathname==='/api/status'){
  const r=await fetch('http://127.0.0.1:11434/api/tags',{signal:AbortSignal.timeout(3000)});if(!r.ok)throw Error('Ollama unavailable');const data=await r.json();

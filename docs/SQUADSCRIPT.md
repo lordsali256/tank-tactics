@@ -1,6 +1,18 @@
 # Python unit programming
 
-Use any external LLM you like. There is no built-in model or programming chat. Copy this reference, describe your units and tactics to your LLM, then paste its Python into **Scripts**. Each unit starts with an independent basic script. Coordination must be supplied explicitly.
+Use any external LLM you like. No connection is required; the optional battle coach can use your chosen model after explicit opt-in. Copy this reference, describe your units and tactics to your LLM, then paste its Python into **Scripts**. Each unit starts with an independent basic script. Coordination must be supplied explicitly.
+
+## Field Base and optional battle coach
+
+After victory, choose a recruit, then enter Field Base to claim one of three highlighted permanent upgrades. All eight training categories are laid out there for the selected unit. Paid training starts at 80 credits and increases by 20 per existing level, capped at twenty levels. Combine three matching units to raise their star tier and order capacity. Equipment, paint and scripts are available from the depot. Old purchased battlefield structures are removed and their purchase/training credits refunded once.
+
+Hover over units on PC or tap their model/name on a phone for stats. Collection import/export is hidden and remains a future update.
+
+**Optional LLM coach** is available when playing through the local bridge. Select local Ollama or a provider exposing a compatible chat-completions API. Enter an endpoint and model, optionally a provider key, then explicitly enable sending battle reports. Nothing is sent by default. Opt-in resets when the page reloads; endpoint/model preferences persist, but keys remain only in memory. HTTP is restricted to loopback; remote providers require HTTPS. Ollama runs on this computer. The default is Qwen2.5-Coder 7B, verified locally with a real battle-report fixture.
+
+The coach receives the grouped function reference, owned units' scripts/types/tiers, optional squad script, and the last battle report: map, round, outcome, duration, shots, damage dealt/taken, hit events, kills, survival, remaining ammo/health and collected pickups. It does not receive your API key as prompt text. Your chosen hosted provider may charge for requests; its normal privacy terms apply. No provider requests happen until opt-in.
+
+Valid drafts can be applied manually. **Automatically apply valid scripts** is a separate opt-in. The interpreter validates every returned unit script and optional squad script before any changes; unknown units or invalid actions reject the whole draft. Changing scripts or resetting a run while a request is underway makes its reply stale. The coach cannot award units, credits, upgrades or equipment. A failed request leaves existing scripts intact. Multiplayer combat and accounts remain server-controlled; the coach is a campaign feature.
 
 ## Ask your LLM
 
