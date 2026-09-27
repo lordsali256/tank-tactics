@@ -20,3 +20,9 @@ await run('draftSquadOrders()');assert.equal(run("$('chatApply').disabled"),fals
 console.log('50 functions parse and execute; conditions, capacities, unique selectors, supports, later helicopters, AI scaling, persistent shields, auto retry and phone-chat callback passed.');
 
 
+
+run(String.raw`{round=10;const t=spawnCombat({id:'slots',type:'tank',tier:1,equipment:{}},'player',0,1);battleUnits=[t];t.squadScript='all advance\nall kite\nall brace\nall retreat below 25%';if(!ordersFor(t)['ability:advance'])throw Error('Locked retreat consumed a slot');t.tier=3;if(!ordersFor(t).retreat)throw Error('Upgraded retreat missing')}
+{const boat=spawnCombat({id:'boat',type:'boat',tier:1,equipment:{}},'player',0,1),land=spawnCombat({id:'land',type:'tank',tier:1,equipment:{}},'enemy',0,1),naval=spawnCombat({id:'naval',type:'boat',tier:1,equipment:{}},'enemy',1,2);boat.x=500;boat.y=land.y=naval.y=H*.76;land.x=510;naval.x=550;boat.target=land;boat.squadScript='boat depth-charge';battleUnits=[boat,land,naval];elapsed=100;const before=naval.hp;squadTick(boat,.01);if(naval.hp>=before||boat.abilityTimers['depth-charge']!==108)throw Error('Depth charge ignored naval target');boat.abilityTimers={};naval.hp=0;const energy=boat.energy;squadTick(boat,.01);if(boat.abilityTimers['depth-charge']||boat.energy<energy)throw Error('Depth charge wasted energy without boats')}
+`);
+run("mode='ready';$('chatDraft').value='# comment only';$('chatDraft').oninput()");assert.equal(run("$('chatApply').disabled"),true);const saved=run('squadScript');run("$('chatApply').onclick()");assert.equal(run('squadScript'),saved);
+console.log('Locked command slots, naval ability targeting and empty draft protection passed.');

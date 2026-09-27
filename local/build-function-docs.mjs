@@ -12,7 +12,7 @@ SquadScript is a custom language for coordinating a whole squad. The local Qwen 
 1. Open **Squad programming chat** in the game.
 2. Describe a tactic, for example: “Keep my tank at sniper range. Have the medic heal infantry and rocket soldiers lock onto armored targets.”
 3. Tap **Generate squad orders**. Android uses Qwen2.5 on the phone; the USB game uses computer-local Qwen3.5. The hosted website has no hosted model.
-4. Review the generated script. Invalid output is shown with errors and cannot be applied. Edit the preview if needed.
+4. Review the generated script. Invalid output and drafts without any unit orders are shown with errors and cannot be applied. Edit the preview if needed.
 5. Tap **Apply reviewed script**, then deploy. Follow-up chat requests can refine a draft. A model draft never changes your active script until you apply it.
 
 The script editor works without an LLM. The older **Compile with local AI** button interprets a tactical stance; the programming chat creates actual squad orders.
@@ -25,7 +25,7 @@ selector function [when hp|ammo|energy|heat below|above N%]
 
 Put one order on each line. Selectors are **all**, a unit type, or a stable callsign such as **tank-1**, **infantry-2**, or **medic-1**. Unit types: tank, infantry, helicopter, rocket, artillery, sniper, boat, medic, engineer, scout. Names are case insensitive. Blank lines and comments beginning with # are ignored.
 
-Conditions use that unit's current resource percentage. Example: **all seek-health when hp below 50%**. Conditions can also gate core orders. Values must be 0–100%. Inactive conditional orders do not use a slot.
+Conditions use that unit's current resource percentage. Example: **all seek-health when hp below 50%**. Conditions can also gate core orders. Values must be 0–100%. Inactive conditional orders and retreat orders locked below ★★★ do not use a slot.
 
 ★ executes the latest **3** matching active orders, ★★ the latest **5**, and ★★★ the latest **7**. Leader designation is free. Later matching settings win; movement functions override the normal movement plan. Functions unique to a unit run only on that type, even with **all**. A mismatched explicit type, such as **infantry brace**, is rejected. Combining three matching units upgrades stars and capacity. Put your most important orders last.
 

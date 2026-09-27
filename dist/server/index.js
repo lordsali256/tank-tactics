@@ -2433,7 +2433,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     return parsed;
   };
   ordersFor = function(t) {
-    const parsed = parseSquadScript(scriptFor(t)), name = callsign(t), result = {}, matching = parsed.rules.filter((r) => (r.selector === "all" || r.selector === t.type || r.selector === name) && (!r.unitType || r.unitType === t.type) && conditionActive(t, r.condition));
+    const parsed = parseSquadScript(scriptFor(t)), name = callsign(t), result = {}, matching = parsed.rules.filter((r) => (r.selector === "all" || r.selector === t.type || r.selector === name) && (!r.unitType || r.unitType === t.type) && conditionActive(t, r.condition) && (r.kind !== "retreat" || t.tier >= 3));
     for (const rule of matching.slice(-capacityFor(t))) {
       if (rule.kind === "retreat" && t.tier < 3) continue;
       result[rule.kind] = rule;
@@ -2611,11 +2611,13 @@ function createEngine(a, b, map, initialSeed, restored = null) {
           });
           break;
         case "grenade":
-        case "depth-charge":
-          if (foe && Math.hypot(foe.x - t.x, foe.y - t.y) < (fn === "grenade" ? 180 : 90)) cooldownAbility(t, fn, 8, 15, () => {
-            for (const u of battleUnits) if (u.hp > 0 && u.team !== t.team && (fn !== "depth-charge" || u.stats.water) && Math.hypot(u.x - foe.x, u.y - foe.y) < (fn === "grenade" ? 65 : 90)) takeHit(u, { damage: fn === "grenade" ? 30 : 35, penetration: 0.05, owner: t.id, team: t.team, sourceType: t.type });
+        case "depth-charge": {
+          const target = fn === "depth-charge" ? battleUnits.filter((u) => u.hp > 0 && u.team !== t.team && u.stats.water && Math.hypot(u.x - t.x, u.y - t.y) < 90).sort((a2, b2) => Math.hypot(a2.x - t.x, a2.y - t.y) - Math.hypot(b2.x - t.x, b2.y - t.y))[0] : foe;
+          if (target && Math.hypot(target.x - t.x, target.y - t.y) < (fn === "grenade" ? 180 : 90)) cooldownAbility(t, fn, 8, 15, () => {
+            for (const u of battleUnits) if (u.hp > 0 && u.team !== t.team && (fn !== "depth-charge" || u.stats.water) && Math.hypot(u.x - target.x, u.y - target.y) < (fn === "grenade" ? 65 : 90)) takeHit(u, { damage: fn === "grenade" ? 30 : 35, penetration: 0.05, owner: t.id, team: t.team, sourceType: t.type });
           });
           break;
+        }
         case "triage":
         case "repair": {
           const a2 = injuredAlly(t, fn === "triage", 150);
@@ -2788,6 +2790,10 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     $("functionDialog").showModal();
   };
   $("closeFunctions").onclick = () => $("functionDialog").close();
+  function validateChatDraft(text) {
+    const parsed = parseSquadScript(text);
+    return parsed.rules.length ? parsed : { ...parsed, errors: [...parsed.errors, "Add at least one unit order before applying."] };
+  }
   let chatBusy = false, chatDraft = "", chatHistory = [];
   function chatContext() {
     return "Compile natural language into SquadScript 2. Return JSON with one field script containing newline-separated orders, no markdown. Preserve every explicit numeric range using hold (never substitute kite), and every health condition using when hp below N%. Half health is 50%. Remove obsolete or contradictory orders from the current script. Keep only the requested tactics, within the active order capacity. Use only selectors all or these unit types/callsigns: " + roster.map((u, i) => u.type + "-" + roster.slice(0, i + 1).filter((a2) => a2.type === u.type).length).join(", ") + ". Leader command leader tank-1. General core: SELECTOR follow leader; protect leader; flank leader; focus nearest|weakest|leader; hold 100-500; stance rush|balanced|sniper; retreat below 25%. Additional functions have no arguments: " + squadFunctions.filter((f) => f.group === "General" || roster.some((u) => u.type === groupType(f.group))).map((f) => (f.group === "General" ? "all" : groupType(f.group)) + " " + f.name + ": " + f.description).join("; ") + ". Conditions append when hp|ammo|energy|heat below|above N%. At most " + Math.max(...roster.map(capacityFor)) + " active orders per unit; latest matching active orders run. Do not invent functions or units. Current script:\n" + $("prompt").value.slice(0, 1200);
@@ -2825,7 +2831,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       if (out.error) throw Error(out.error);
       const script = out.script;
       if (typeof script !== "string") throw Error("The model did not return a squad script. Try a simpler request.");
-      const parsed = parseSquadScript(script);
+      const parsed = validateChatDraft(script);
       chatDraft = script;
       $("chatDraft").value = script;
       $("chatApply").disabled = !!parsed.errors.length;
@@ -2842,13 +2848,13 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   $("chatGenerate").onclick = draftSquadOrders;
   $("chatDraft").oninput = () => {
     chatDraft = $("chatDraft").value;
-    const parsed = parseSquadScript(chatDraft);
+    const parsed = validateChatDraft(chatDraft);
     $("chatApply").disabled = !!parsed.errors.length;
     $("chatStatus").textContent = parsed.errors.length ? parsed.errors.join(" \xB7 ") : "Script validated. Ready to Apply.";
   };
   $("chatApply").onclick = () => {
     if (mode === "running" || mode === "won" || chatBusy || compiling) return;
-    const parsed = parseSquadScript($("chatDraft").value);
+    const parsed = validateChatDraft($("chatDraft").value);
     if (parsed.errors.length) return;
     $("prompt").value = $("chatDraft").value;
     compiledPlan = null;
