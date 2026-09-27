@@ -27,7 +27,7 @@
 <dialog class="stats-dialog" id="coachDialog"><div class="stats-top"><h2>Optional LLM coach</h2><button class="tiny" id="closeCoach">Close coach</button></div><p>Send battle statistics, your scripts, and the function guide to a model you choose. Off by default. Only validated Python can be applied.</p>
  <label for="coachProvider">Connection</label><select id="coachProvider"><option value="ollama">Local Ollama</option><option value="gemini">Google AI Studio / Gemini API</option><option value="openai">OpenAI API</option><option value="compatible">Other compatible chat API</option></select>
  <label for="coachEndpoint">Endpoint</label><input id="coachEndpoint" type="url" value="http://127.0.0.1:11434/api/chat" autocomplete="off">
- <label for="coachModel">Model name</label><input id="coachModel" value="qwen2.5-coder:3b" autocomplete="off">
+ <label for="coachModel">Model name</label><input id="coachModel" value="qwen2.5-coder:1.5b" autocomplete="off">
  <label for="coachKey">API key (provider option)</label><input id="coachKey" type="password" autocomplete="off"><p>Keys stay in this game session and are never saved in your collection. A provider may charge for API use.</p>
  <label class="auto-row"><input type="checkbox" id="coachEnabled"> I opt in to sending battle reports and automatically generating scripts after campaign battles.</label>
  <label class="auto-row"><input type="checkbox" id="coachAutoApply"> Automatically apply valid scripts. Otherwise show a draft for review.</label>
