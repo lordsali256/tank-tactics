@@ -39,7 +39,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   const clearTimeout = () => {
   };
   const canvas = document.getElementById("arena"), ctx = canvas.getContext("2d");
-  const W = canvas.width, H = canvas.height;
+  const WORLD_SCALE = Math.sqrt(10), W = canvas.width * WORLD_SCALE, H = canvas.height * WORLD_SCALE;
   const rocks = [{ x: 320, y: 105, w: 82, h: 132 }, { x: 520, y: 320, w: 90, h: 125 }, { x: 425, y: 242, w: 70, h: 76 }];
   const commandInfo = [
     ["radar", "Radar", "Scan for targets."],
@@ -282,7 +282,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     return best;
   }
   function pathStep(t, foe) {
-    const cell = 28, cols = Math.ceil(W / cell), rows = Math.ceil(H / cell), index = (x, y) => y * cols + x, point = (i) => [(i % cols + 0.5) * cell, (Math.floor(i / cols) + 0.5) * cell], free = (i) => {
+    const cell = 56, cols = Math.ceil(W / cell), rows = Math.ceil(H / cell), index = (x, y) => y * cols + x, point = (i) => [(i % cols + 0.5) * cell, (Math.floor(i / cols) + 0.5) * cell], free = (i) => {
       const [x, y] = point(i);
       return !collides(x, y, t.r + 2);
     };
@@ -898,24 +898,23 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     root.replaceChildren();
     $("rewardTitle").textContent = "Level " + round + " rewards";
     const h = document.createElement("h3");
-    h.textContent = levelReward.unit ? "\u2713 Random recruit claimed" : "1 / Random unit reward";
+    h.textContent = levelReward.unit ? "\u2713 Recruit claimed" : "1 / Choose one of three recruits";
     root.append(h);
     if (levelReward.unit) {
       const p = document.createElement("p");
       p.textContent = levelReward.unit;
       root.append(p);
     } else {
-      const type = levelReward.offerType;
-      root.append(rewardButton("Recruit " + unitTypes[type].name + " \u2605", roster.length < economy.slots ? "Add your randomly awarded unit" : "Team full \xB7 recruit waits in reserve", () => chooseReward({ unitType: type, action: "add" })));
+      for (const type of levelReward.offerTypes) root.append(rewardButton("Recruit " + unitTypes[type].name + " \u2605", roster.length < economy.slots ? "Add to squad \xB7 combine three matching copies" : "Team full \xB7 recruit waits in reserve", () => chooseReward({ unitType: type, action: "add" })));
     }
     const th = document.createElement("h3");
-    th.textContent = levelReward.tactic ? "\u2713 Squad instruction claimed" : "2 / Squad instruction upgrade";
+    th.textContent = levelReward.tactic ? "\u2713 Squad instruction claimed" : "2 / Choose a next-round combat doctrine";
     root.append(th);
     if (levelReward.tactic) {
       const p = document.createElement("p");
       p.textContent = levelReward.tactic.instruction + " " + levelReward.tactic.effect;
       root.append(p);
-    } else for (const option of rewardOptions) root.append(rewardButton(option.instruction, option.buff + " \xB7 " + option.effect, () => chooseReward(option)));
+    } else for (const option of levelReward.tacticOptions) root.append(rewardButton(option.instruction, option.buff + " \xB7 " + option.effect, () => chooseReward(option)));
     const store = document.createElement("button");
     store.className = "tiny";
     store.textContent = "Open store \xB7 " + economy.credits + " credits";
@@ -929,7 +928,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   chooseReward = function(option) {
     if (mode !== "won" || !levelReward) return;
     if (option.unitType) {
-      if (levelReward.unit || option.action !== "add" || option.unitType !== levelReward.offerType) return;
+      if (levelReward.unit || option.action !== "add" || !levelReward.offerTypes.includes(option.unitType)) return;
       saveProgram();
       if (option.action === "upgrade") {
         const u = roster.find((u2) => u2.id === option.unitId && u2.type === option.unitType && u2.tier < 3);
@@ -954,7 +953,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       saveRoster();
       renderRoster();
     } else {
-      if (levelReward.tactic || !rewardOptions.includes(option)) return;
+      if (levelReward.tactic || !levelReward.tacticOptions.includes(option)) return;
       levelReward.tactic = option;
       nextBuff = option;
       const prior = $("prompt").value.trim();
@@ -991,7 +990,17 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     if (win) {
       const earnings = 50 + round * 10;
       economy.credits += earnings;
-      levelReward = { unit: null, tactic: null, offerType: Object.keys(unitTypes).filter((t) => t !== "boat" || campaign.map === "coast")[Math.floor(random() * Object.keys(unitTypes).filter((t) => t !== "boat" || campaign.map === "coast").length)] };
+      const pool = Object.keys(unitTypes).filter((t) => t !== "boat" || campaign.map === "coast");
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      const boons = [...rewardOptions];
+      for (let i = boons.length - 1; i > 0; i--) {
+        const j = Math.floor(random() * (i + 1));
+        [boons[i], boons[j]] = [boons[j], boons[i]];
+      }
+      levelReward = { unit: null, tactic: null, offerTypes: pool.slice(0, 3), tacticOptions: boons.slice(0, 3) };
       $("reset").disabled = true;
       saveRoster();
       renderRoster();
@@ -1018,7 +1027,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   };
   $("closeRoster").onclick = () => $("rosterDialog").close();
   $("prompt").addEventListener("input", saveProgram);
-  let campaign = { lives: 3, map: "urban", view: "2d", gear: [], cosmeticCoins: 0, skins: ["olive"], skin: "olive" }, battleUnits = [], replayRecord = null, replaying = false, replayInputs = null, damageEvents = [], replaySaved = null, pickups = [];
+  let campaign = { lives: 3, map: "urban", view: "3d", gear: [], cosmeticCoins: 0, skins: ["olive"], skin: "olive" }, battleUnits = [], replayRecord = null, replaying = false, replayInputs = null, damageEvents = [], replaySaved = null, pickups = [];
   try {
     const c = JSON.parse(localStorage.getItem("tank-campaign-v1"));
     if (c && Number.isInteger(c.lives) && c.lives >= 0 && c.lives <= 3 && Array.isArray(c.gear)) {
@@ -1039,12 +1048,55 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     }
   };
   const maps = { urban: [{ x: 320, y: 105, w: 82, h: 132 }, { x: 520, y: 320, w: 90, h: 125 }, { x: 425, y: 242, w: 70, h: 76 }], canyon: [{ x: 280, y: 40, w: 75, h: 180 }, { x: 550, y: 340, w: 75, h: 180 }, { x: 440, y: 170, w: 60, h: 190 }], volcanic: [{ x: 320, y: 90, w: 65, h: 125 }, { x: 550, y: 360, w: 65, h: 125 }], coast: [{ x: 355, y: 75, w: 95, h: 165 }, { x: 650, y: 70, w: 70, h: 90 }] };
+  let buildings = [], worldRevision = 0;
   function applyMap() {
     if (!maps[campaign.map]) campaign.map = "urban";
-    rocks.splice(0, rocks.length, ...maps[campaign.map].map((o) => ({ ...o })));
+    campaign.view = "3d";
+    let m = 7907 + ["urban", "canyon", "volcanic", "coast"].indexOf(campaign.map) * 173;
+    const rnd = () => {
+      m = m * 1664525 + 1013904223 >>> 0;
+      return m / 4294967296;
+    };
+    buildings = [];
+    for (let row = 0; row < 7; row++) for (let col = 0; col < 12; col++) {
+      const x = 240 + col * 205 + rnd() * 45, y = 75 + row * 235 + rnd() * 35, w = 65 + rnd() * 75, h = 65 + rnd() * 70;
+      if (Math.abs(y + h / 2 - H * 0.45) < 145 || campaign.map === "coast" && y + h > H * 0.54) continue;
+      const hp = 100 + Math.floor(rnd() * 100);
+      buildings.push({ id: "building-" + row + "-" + col, x, y, w, h, height: 40 + rnd() * 110, hp, maxHp: hp, destroyed: false });
+    }
+    rocks.splice(0, rocks.length, ...buildings);
     for (const b2 of campaign.base || []) if (b2.kind === "wall" && !onlinePlaying) rocks.push({ x: b2.x - 18 - (b2.tier - 1) * 4, y: b2.y - 40, w: 36 + (b2.tier - 1) * 8, h: 80 });
+    worldRevision++;
     $("mapSelect").value = campaign.map;
-    $("viewSelect").value = campaign.view;
+    $("viewSelect").value = "3d";
+  }
+  function damageBuilding(b2, shot) {
+    if (!b2 || b2.destroyed || !Number.isFinite(b2.hp)) return;
+    b2.hp = Math.max(0, b2.hp - shot.damage * (shot.radius ? 1.7 : 1));
+    sparks.push({ x: b2.x + b2.w / 2, y: b2.y + b2.h / 2, life: 0.5, color: "#ffb05e" });
+    if (b2.hp === 0) {
+      b2.destroyed = true;
+      const at = rocks.indexOf(b2);
+      if (at >= 0) rocks.splice(at, 1);
+      worldRevision++;
+      pickups.push({ x: b2.x + b2.w / 2, y: b2.y + b2.h / 2, kind: ["health", "ammo", "overdrive", "shield"][Math.floor(random() * 4)], used: false });
+      if (shot.radius) {
+        for (const other of buildings) if (other !== b2 && !other.destroyed && Math.hypot(other.x - b2.x, other.y - b2.y) < shot.radius + 45) other.hp = Math.max(1, other.hp - shot.damage * 0.4);
+      }
+    }
+  }
+  function collectPickup(t, p) {
+    p.used = true;
+    const kind = p.kind || "ammo";
+    if (kind === "health") t.hp = Math.min(t.maxHp, t.hp + 50);
+    if (kind === "ammo") {
+      t.reserve = Math.min(250, t.reserve + 40);
+      t.ammo = t.stats.mag;
+      t.reloading = 0;
+    }
+    if (kind === "overdrive") t.powerTime = 10;
+    if (kind === "shield") t.shield = Math.max(t.shield, 40);
+    sparks.push({ x: t.x, y: t.y, life: 0.6, color: kind === "health" ? "#69f6a6" : "#72caff" });
   }
   const gearItems = [];
   const weaponNames = ["Autocannon", "Railgun", "Scattergun", "Mortar", "Guided rockets", "Burst rifle", "Laser", "Heavy cannon", "Marksman rifle", "Naval gun"];
@@ -1225,7 +1277,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   }
   function spawnCombat(u, team, index, count) {
     const s = unitStats(u), sea = s.water;
-    const x = team === "player" ? 80 + Math.floor(index / 6) * 55 : W - 80 - Math.floor(index / 6) * 55, y = sea ? 360 + index % 3 * 65 : campaign.map === "coast" ? 55 + index % 4 * 65 : 55 + index % 6 * 88;
+    const x = team === "player" ? 80 + Math.floor(index / 6) * 55 : W - 80 - Math.floor(index / 6) * 55, y = sea ? H * 0.76 + index % 3 * 65 : H * 0.45 + (index % 6 - (Math.min(count, 6) - 1) / 2) * 58;
     return { team, id: u.id, type: u.type, tier: u.tier, stats: s, x, y, velocity: 0, heading: team === "player" ? 0 : Math.PI, reserve: s.ammoReserve, shieldDelay: 0, dodgeCooldown: 0, boostTime: 0, angle: team === "player" ? 0 : Math.PI, hp: s.hp, maxHp: s.hp, r: s.r, cooldown: 0.5 + index * 0.07, hitFlash: 0, phase: 0, ammo: s.mag, reloading: 0, heat: 0, shield: s.shieldCapacity, energy: s.energyCapacity, commands: team === "player" ? [...u.instruction ? u.commands : unlocked(u)] : unlocked(u), plan: team === "player" ? planForUnit(u) : { style: "balanced", preferred: s.range, cover: true, coverBelow: 0.4, evade: u.tier >= 2, retreat: u.tier >= 3, retreatBelow: 0.2, firePolicy: "always" }, lock: 0, scan: 0, target: null };
   }
   resetPositions = function() {
@@ -1245,13 +1297,14 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     seed = 12345 + round;
     accumulator = 0;
     damageEvents = [];
-    pickups = [{ x: 220, y: 280, used: false }, { x: 700, y: 280, used: false }];
+    pickups = Array.from({ length: 36 }, (_, i) => ({ x: 130 + i % 12 * (W - 260) / 11, y: H * (i < 12 ? 0.43 : i < 24 ? 0.22 : 0.78), kind: ["health", "ammo", "overdrive", "shield"][i % 4], used: false })).filter((p) => !collides(p.x, p.y, 20));
+    for (const t of battleUnits) if (t.team === "player" && activeBuff?.kind === "shield") t.shield += 60;
     updateHud();
   };
   function canMove(t, x, y) {
     if (x < t.r || x > W - t.r || y < t.r || y > H - t.r) return false;
     if (t.stats.flying) return true;
-    if (campaign.map === "coast" && (t.stats.water ? y < 335 : y > 300)) return false;
+    if (campaign.map === "coast" && (t.stats.water ? y < H * 0.6 : y > H * 0.56)) return false;
     return !collides(x, y, t.r);
   }
   function squadMove(t, mx, my, dt) {
@@ -1283,18 +1336,20 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     return candidates.sort((a2, b2) => Math.hypot(a2.x - t.x, a2.y - t.y) - Math.hypot(b2.x - t.x, b2.y - t.y))[0] || null;
   }
   function squadFire(t, target) {
-    const s = t.stats, p = t.plan, spread = 1 / s.accuracy * (t.commands.includes("perch") ? 0.5 : 1), a2 = t.angle + (random() - 0.5) * spread, crit = random() < s.critChance;
+    const s = t.stats, p = t.plan, spread = 1 / s.accuracy * (t.commands.includes("perch") ? 0.5 : 1), a2 = t.angle + (random() - 0.5) * spread, crit = random() < s.critChance + (t.team === "player" && activeBuff?.kind === "critical" ? 0.25 : 0);
     t.ammo--;
     t.heat += s.heatPerShot;
     if (!t.ammo) t.reloading = s.magazineCapacity / s.loadingSpeed + s.reloadDelay;
     const damage = s.damage * (crit ? s.critMultiplier : 1) * (t.team === "player" && activeBuff?.kind === "damage" ? 1.2 : 1);
-    shots.push({ team: t.team, owner: t.id, x: t.x + Math.cos(a2) * (t.r + 5), y: t.y + Math.sin(a2) * (t.r + 5), vx: Math.cos(a2) * s.projectileSpeed, vy: Math.sin(a2) * s.projectileSpeed, damage, life: 2.5, indirect: s.indirect || s.flying, radius: s.explosionRadius, penetration: s.penetration, crit });
-    t.cooldown = s.reload * (p.style === "rush" ? 0.85 : 1);
+    shots.push({ team: t.team, owner: t.id, sourceType: t.type, x: t.x + Math.cos(a2) * (t.r + 5), y: t.y + Math.sin(a2) * (t.r + 5), vx: Math.cos(a2) * s.projectileSpeed, vy: Math.sin(a2) * s.projectileSpeed, damage, life: 2.5, indirect: s.indirect || s.flying, radius: s.explosionRadius + (t.team === "player" && activeBuff?.kind === "explosive" ? 50 : 0), penetration: s.penetration, crit });
+    t.cooldown = s.reload * (p.style === "rush" ? 0.85 : 1) * (t.powerTime > 0 ? 0.65 : 1) * (t.team === "player" && activeBuff?.kind === "reload" ? 0.65 : 1);
   }
   function squadTick(t, dt) {
     if (t.hp <= 0) return;
     const s = t.stats, p = t.plan;
     t.phase += dt;
+    t.powerTime = Math.max(0, (t.powerTime || 0) - dt);
+    if (t.team === "player" && activeBuff?.kind === "repair") t.hp = Math.min(t.maxHp, t.hp + 2 * dt);
     t.cooldown -= dt;
     t.dodgeCooldown = Math.max(0, t.dodgeCooldown - dt);
     t.shieldDelay = Math.max(0, t.shieldDelay - dt);
@@ -1350,9 +1405,13 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       my = formation.my;
       action = formation.action;
       if ((mx || my) && !t.stats.flying && lineBlocked(t.x, t.y, t.x + mx, t.y + my)) {
-        const waypoint = pathStep(t, { x: t.x + mx, y: t.y + my });
-        mx = waypoint[0] - t.x;
-        my = waypoint[1] - t.y;
+        t.pathClock = (t.pathClock || 0) - dt;
+        if (t.pathClock <= 0) {
+          t.pathTarget = pathStep(t, { x: t.x + mx, y: t.y + my });
+          t.pathClock = 0.5;
+        }
+        mx = t.pathTarget[0] - t.x;
+        my = t.pathTarget[1] - t.y;
       }
     } else if (blocked) {
       t.pathClock = (t.pathClock || 0) - dt;
@@ -1385,23 +1444,25 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       t.boostTime = 1.5;
       t.energy -= 25;
     }
-    const topSpeed = s.speed * (t.boostTime > 0 ? 1.15 : 1) * (t.team === "player" && activeBuff?.kind === "speed" ? 1.15 : 1);
+    const topSpeed = s.speed * (t.powerTime > 0 ? 1.35 : 1) * (t.boostTime > 0 ? 1.15 : 1) * (t.team === "player" && activeBuff?.kind === "speed" ? 1.15 : 1);
     t.velocity = moving ? Math.min(topSpeed, t.velocity + s.acceleration * dt) : Math.max(0, t.velocity - s.braking * dt);
     if (moving) squadMove(t, mx, my, dt);
     const aim = Math.atan2(dy, dx), turn = Math.atan2(Math.sin(aim - t.angle), Math.cos(aim - t.angle));
     t.angle += clamp(turn, -s.turretTurnRate * dt, s.turretTurnRate * dt);
     const sensor = t.commands.includes("radar") ? s.radarRange : 240, policy = p.firePolicy === "always" || (p.firePolicy === "inRange" ? Math.abs(dist - p.preferred) < 45 : Math.hypot(mx, my) < 0.1);
-    if (!blocked && dist < sensor && Math.abs(turn) < 0.15) t.lock += dt;
+    if (dist < sensor && Math.abs(turn) < 0.15) t.lock += dt;
     else t.lock = 0;
     if (t.commands.includes("gun") && t.ammo > 0 && t.reloading <= 0 && t.cooldown <= 0 && t.heat < s.heatCapacity && policy && t.lock >= s.targetLockTime + foe.stats.ecmStrength * 0.4) {
       squadFire(t, foe);
       action = "Firing";
     }
     if (t.id === selectedId) updateProgramLive(action);
-    if (campaign.map === "volcanic" && Math.hypot(t.x - 460, t.y - 280) < 70 && !s.flying) t.hp = Math.max(0, t.hp - 12 * dt);
+    if (campaign.map === "volcanic" && Math.hypot(t.x - W * 0.5, t.y - H * 0.22) < 100 && !s.flying) t.hp = Math.max(0, t.hp - 12 * dt);
   }
   function takeHit(t, s, scale = 1) {
-    let damage = s.damage * scale * (1 - Math.max(0, t.stats.armor - s.penetration)) * (1 - t.stats.damageResistance);
+    const source = s.sourceType || battleUnits.find((u) => u.id === s.owner)?.type;
+    const matchup = source === "infantry" && ["tank", "artillery", "boat"].includes(t.type) ? 0.12 : source === "tank" && ["infantry", "sniper"].includes(t.type) ? 1.35 : 1;
+    let damage = matchup * s.damage * scale * (1 - Math.max(0, t.stats.armor - s.penetration)) * (1 - t.stats.damageResistance);
     if (t.plan.cover && nearRock(t)) damage *= 0.72;
     if (t.team === "player" && activeBuff?.kind === "armor") damage *= 0.8;
     if (t.commands.includes("duck") && t.plan.evade && t.energy >= 10 && t.dodgeCooldown <= 0 && random() < t.stats.dodgeChance) {
@@ -1427,10 +1488,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       squadTick(t, dt);
       if (t.hp > 0) for (const pickup of pickups) {
         if (!pickup.used && Math.hypot(t.x - pickup.x, t.y - pickup.y) < t.stats.pickupRadius) {
-          pickup.used = true;
-          t.hp = Math.min(t.maxHp, t.hp + 20 * t.stats.repairRate);
-          t.reserve += 12;
-          t.energy = Math.min(t.stats.energyCapacity, t.energy + 25);
+          collectPickup(t, pickup);
         }
       }
     }
@@ -1448,9 +1506,13 @@ function createEngine(a, b, map, initialSeed, restored = null) {
           break;
         }
       }
-      const wall = !s.indirect && lineBlocked(px, py, s.x, s.y);
+      const wall = !s.indirect && blockingRock(px, py, s.x, s.y);
+      if (wall) damageBuilding(wall, s);
       if (hit && !wall) {
         takeHit(hit, s);
+        if (s.radius) {
+          for (const b2 of buildings) if (!b2.destroyed && Math.hypot(Math.max(b2.x, Math.min(hit.x, b2.x + b2.w)) - hit.x, Math.max(b2.y, Math.min(hit.y, b2.y + b2.h)) - hit.y) < s.radius) damageBuilding(b2, s);
+        }
         if (s.radius) for (const t of targets) {
           if (t === hit) continue;
           const d = Math.hypot(t.x - hit.x, t.y - hit.y);
@@ -1463,7 +1525,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     sparks = sparks.filter((s) => s.life > 0);
     updateHud();
     const allies = battleUnits.filter((t) => t.team === "player"), foes = battleUnits.filter((t) => t.team === "enemy");
-    if (!allies.some((t) => t.hp > 0) || !foes.some((t) => t.hp > 0) || elapsed >= 60) {
+    if (!allies.some((t) => t.hp > 0) || !foes.some((t) => t.hp > 0) || elapsed >= 180) {
       const total = (t) => t.reduce((a2, u) => a2 + u.hp, 0) / t.reduce((a2, u) => a2 + u.maxHp, 0), win = total(allies) > total(foes);
       if (replaying) {
         const count = damageEvents.length;
@@ -1779,7 +1841,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       const u = selectedUnit(), out = await requestLocalPlan("Propose a useful next-round tactic after defeating a mixed squad on " + campaign.map + ". Favor " + (round % 2 ? "cover and distance" : "evade and retreat") + ".", u, unlocked(u)), p = out.plan;
       const generated = "Hold " + Math.round(p.preferred) + " range" + (p.cover ? ", use cover below " + Math.round(p.coverBelow * 100) + "% hull" : "") + (p.evade ? ", evade with zigzag movement" : "") + (p.retreat ? ", retreat below " + Math.round(p.retreatBelow * 100) + "% hull" : "") + ".";
       if (levelReward === reward && !reward.tactic) {
-        rewardOptions[0].instruction = generated;
+        reward.tacticOptions[0] = { ...reward.tacticOptions[0], instruction: generated };
         renderLevelRewards();
         $("message").textContent = "Tactic reward generated by " + out.model;
       }
@@ -1829,11 +1891,19 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       }
       onlinePlaying = true;
       mode = "running";
+      const mapChanged = campaign.map !== data.map;
       campaign.map = data.map;
-      applyMap();
+      if (mapChanged) applyMap();
       battleUnits = data.battleUnits.map((t) => ({ ...t, team: data.seat === 0 ? t.team : t.team === "player" ? "enemy" : "player" }));
       shots = data.shots.map((s) => ({ ...s, team: data.seat === 0 ? s.team : s.team === "player" ? "enemy" : "player" }));
       sparks = data.sparks;
+      pickups = data.pickups || [];
+      if (data.buildings) {
+        const geometryChanged = buildings.length !== data.buildings.length || buildings.some((b2, i) => b2.id !== data.buildings[i]?.id || b2.destroyed !== data.buildings[i]?.destroyed);
+        buildings = data.buildings;
+        rocks.splice(0, rocks.length, ...buildings.filter((b2) => !b2.destroyed));
+        if (geometryChanged) worldRevision++;
+      }
       player = battleUnits.find((u) => u.team === "player");
       enemy = battleUnits.find((u) => u.team === "enemy");
       elapsed = data.elapsed;
@@ -2245,6 +2315,18 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   else $("prompt").value = "Keep moving, fire in range, and hold " + unitStats().range + " range.";
   saveRoster();
   renderRoster();
+  rewardOptions.push(
+    { instruction: "Sustain concentrated fire during reload cycles.", buff: "Overclocked loaders", effect: "Fire 35% faster next round.", kind: "reload" },
+    { instruction: "Push as a squad behind energy shields.", buff: "Shield airdrop", effect: "Every ally starts with 60 bonus shield next round.", kind: "shield" },
+    { instruction: "Concentrate fire into clustered targets and cover.", buff: "Demolition rounds", effect: "Shots splash nearby enemies and demolish cover next round.", kind: "explosive" },
+    { instruction: "Keep the squad alive while holding the firing line.", buff: "Medic drone support", effect: "Every ally repairs 2 extra HP per second next round.", kind: "repair" },
+    { instruction: "Focus vulnerable enemies with decisive precision fire.", buff: "Critical salvo", effect: "Gain 25 percentage points of critical chance next round.", kind: "critical" }
+  );
+  window.arenaWorld = () => ({ W, H, buildings, pickups, battleUnits, shots, sparks, mode, elapsed, map: campaign.map, selectedId, worldRevision, skin: campaign.skin, base: onlinePlaying ? [] : campaign.base });
+  const fallbackDraw = draw;
+  draw = function() {
+    if (!window.webglArenaActive) fallbackDraw();
+  };
   commandRender();
   resetPositions();
   preview();
@@ -2265,7 +2347,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   for (let i = 0; i < b.length; i++) {
     const t = spawnCombat(b[i], "player", i, b.length);
     t.team = "enemy";
-    t.x = 840 - Math.floor(i / 6) * 55;
+    t.x = W - 80 - Math.floor(i / 6) * 55;
     t.angle = Math.PI;
     t.heading = Math.PI;
     t.plan = planForUnit(b[i]);
@@ -2284,6 +2366,11 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     shots = restored.shots;
     sparks = restored.sparks;
     pickups = restored.pickups;
+    if (restored.buildings) {
+      buildings = restored.buildings;
+      rocks.splice(0, rocks.length, ...buildings.filter((b2) => !b2.destroyed));
+      worldRevision++;
+    }
     elapsed = restored.elapsed;
     seed = restored.seed;
     mode = restored.mode;
@@ -2295,7 +2382,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     const steps = Math.max(0, Math.min(120, Math.floor(seconds * 60)));
     for (let i = 0; i < steps && mode === "running"; i++) update(1 / 60);
   }, state() {
-    return JSON.parse(JSON.stringify({ mode, elapsed, seed, battleUnits: battleUnits.map((t) => ({ ...t, target: null, targetId: t.target?.id || null })), shots, sparks, pickups, damageEvents }, (key, value) => key === "target" ? void 0 : value));
+    return JSON.parse(JSON.stringify({ mode, elapsed, seed, battleUnits: battleUnits.map((t) => ({ ...t, target: null, targetId: t.target?.id || null })), shots, sparks, pickups, buildings, damageEvents }, (key, value) => key === "target" ? void 0 : value));
   } };
 }
 

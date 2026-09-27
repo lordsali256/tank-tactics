@@ -4,14 +4,14 @@ A playable Android and browser combined-arms roguelite inspired by Robocode.
 
 ## Play
 
-Open Tank Tactics on the phone, write a squad order script, tap **Compile with local AI**, review the interpreted plan, then deploy. Use **Squad & combine** to select, bench or upgrade units; **Armory** for equipment; **Store** to buy team slots. Each campaign victory grants both a random recruit and an instruction with a next-round buff. Three defeats end the run; equipment, purchased slots and currencies remain; each new run assembles a fresh squad from one tank. The previous test collection is archived for export.
+Open Tank Tactics on the phone, write a squad order script, tap **Compile with local AI**, review the interpreted plan, then deploy. Use **Squad & combine** to select, bench or upgrade units; **Armory** for equipment; **Store** to buy team slots. Each campaign victory grants a choice of three distinct recruits and a separate choice of three next-round doctrines. Three defeats end the run; equipment, purchased slots and currencies remain; each new run assembles a fresh squad from one tank. The previous test collection is archived for export.
 
 - Up to 15 simultaneous units: tanks, infantry, helicopters, rocket soldiers, artillery, snipers and coastal boats.
 - Infantry base speed reduced from 125 to 80.
-- Four maps, volcanic hazards, water-only boats, pickups, 39 distinct displayed stats and 30 equipment choices.
+- Four maps with exactly 10× the previous battlefield area, up to 72 destructible buildings, rubble, and 36 initial ammo/health/overdrive/shield drops. Destroying a building releases an additional drop. Battles last at most 180 seconds. Rifle infantry damage against armored tanks is reduced by 88%; rockets remain antiarmor. There are 39 distinct displayed stats and 30 equipment choices.
 - Every run starts with one tank versus one AI tank. A shared script assigns leader, follow, protect, focus, hold range, flank and retreat orders. Three matching units combine, increasing order capacity from 3 to 5 to 7. No command-toggle section. Hero units are on the future-update board.
 - Drag equipment onto weapon/armor/utility slots or tap Equip. Retire a unit for at most five cosmetic tokens; four color schemes are available.
-- Latest-battle replay, collection import/export, and optional projected 3D tactical view. The 3D view uses simple procedural blocks, not a Unity production renderer.
+- Latest-battle replay, collection import/export, and real Three.js WebGL 3D graphics. Procedural tracked tanks, soldiers, helicopters with animated rotors, artillery, snipers and boats. Squad follow camera, orbit/zoom, whole-map view and tappable minimap. The renderer ships offline in the APK.
 - Invite multiplayer uses an authoritative server and persistent match database. Two players submit squads, share a code, reconnect with saved session tokens and receive server-confirmed results. These test matches give no campaign rewards. Collections and imported progression are device-local, so this is not a ranked economy.
 
 ## Free local models
@@ -24,7 +24,7 @@ Computer testing optionally uses **qwen3.5:4b** in Ollama via the loopback bridg
 
 ## Build and test
 
-`npm run build` generates a Cloudflare-compatible bundled Worker and client assets. `node local/combat.test.mjs`, `node local/matches.test.mjs` and `node local/cloud.test.mjs` verify deterministic combat, command tiers, separate rewards, slot purchases, gear effects, import validation, retirement caps, lives and match/session/database rules. Drizzle schema migrations live in `drizzle/`; append migrations rather than changing deployed history.
+`npm run build` generates a Cloudflare-compatible bundled Worker and client assets. `node local/combat.test.mjs`, `node local/arena.test.mjs`, `node local/matches.test.mjs` and `node local/cloud.test.mjs` verify deterministic combat, command tiers, separate rewards, slot purchases, gear effects, import validation, retirement caps, lives and match/session/database rules. Drizzle schema migrations live in `drizzle/`; append migrations rather than changing deployed history.
 
 `android/build.ps1` requires JDK 17, Android platform/build-tools 36 and the native library at `android/build/native/libtank_ai.so`. The output is `android/build/TankTactics-debug.apk`, a debug-signed ARM64 test APK. It bundles the game and library; model data is stored in private app files separately and survives app updates. Internet permission supports model download and USB tests.
 

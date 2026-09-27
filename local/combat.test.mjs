@@ -16,13 +16,13 @@ function simulate(instruction,modelPlan=null){
  roster.push(newUnit('infantry',2),newUnit('infantry',2));combineUnits('infantry',2);if(selectedUnit().tier!==3||!commands.has('retreat')||!commands.has('perch'))throw Error('Third star unlocks incorrect');
  for(const type of Object.keys(unitTypes)){if(!roster.some(u=>u.type===type))roster.push(newUnit(type));campaign.map=type==='boat'?'coast':'urban';activateUnit(roster.find(u=>u.type===type).id);if(player.stats.mag!==unitTypes[type].mag||player.type!==type)throw Error('Unit combat profile mismatch');}
  activateUnit(roster.find(u=>u.type==='tank').id);
- mode='running';finish(true);levelReward.offerType='sniper';const recruitCount=roster.length;chooseReward({unitType:'sniper',action:'add'});if(roster.length!==recruitCount+1||round!==1||nextBuff!==null)throw Error('Recruit reward failed');
+ mode='running';finish(true);levelReward.offerTypes=['sniper','infantry','tank'];const recruitCount=roster.length;chooseReward({unitType:'sniper',action:'add'});if(roster.length!==recruitCount+1||round!==1||nextBuff!==null)throw Error('Recruit reward failed');
  chooseReward({unitType:'sniper',action:'add'});if(roster.length!==recruitCount+1)throw Error('Duplicate reward claim');
  completeLevelRewards();if(round!==1)throw Error('Must claim both reward pools');
- chooseReward(rewardOptions[0]);completeLevelRewards();if(round!==2||nextBuff!==rewardOptions[0])throw Error('Independent tactic pool failed');
+ const boon=levelReward.tacticOptions[0];chooseReward(boon);completeLevelRewards();if(round!==2||nextBuff!==boon)throw Error('Independent tactic pool failed');
  economy.credits=1000;const credits=economy.credits,cost=slotCost(),slots=economy.slots;buySlot();if(economy.slots!==slots+1||economy.credits!==credits-cost)throw Error('Slot purchase failed');
- while(roster.length<economy.slots)roster.push(newUnit('sniper'));mode='running';finish(true);levelReward.offerType='tank';const full=roster.length;chooseReward({unitType:'tank',action:'add'});if(roster.length!==full||economy.reserve.tank!==1)throw Error('Full team must reserve reward');
- chooseReward(rewardOptions[1]);completeLevelRewards();combineUnits('sniper',1);claimReserve('tank');if(economy.reserve.tank!==0||roster.length!==full-1)throw Error('Reserve claim failed');
+ while(roster.length<economy.slots)roster.push(newUnit('sniper'));mode='running';finish(true);levelReward.offerTypes=['tank','sniper','artillery'];const full=roster.length;chooseReward({unitType:'tank',action:'add'});if(roster.length!==full||economy.reserve.tank!==1)throw Error('Full team must reserve reward');
+ chooseReward(levelReward.tacticOptions[1]);completeLevelRewards();combineUnits('sniper',1);claimReserve('tank');if(economy.reserve.tank!==0||roster.length!==full-1)throw Error('Reserve claim failed');
  round=1;mode='ready';wins=0;
  const gearUnit=selectedUnit(),baseDamage=unitStats().damage;economy.credits=1000;buyGear('weapon-0');equipGear('weapon-0','weapon');if(unitStats().damage<=baseDamage)throw Error('Gear must change combat stats');renderStats();if($('statList').children.length!==39)throw Error('Expected 39 distinct stats');
  const original=roster.length;let rejected=false;try{safeImportedUnits({version:1,units:[{type:'invalid',tier:1}]})}catch{rejected=true}if(!rejected)throw Error('Invalid imports accepted');gearUnit.wins=99;const coins=campaign.cosmeticCoins;retireUnit();if(campaign.cosmeticCoins!==coins+5||roster.length!==original-1)throw Error('Retirement cap failed');
@@ -34,7 +34,7 @@ function simulate(instruction,modelPlan=null){
  `,context);
  document.getElementById('prompt').value='leader tank-1\nall stance '+(/snip/i.test(instruction)?'sniper':'rush')+'\nall focus nearest';vm.runInContext('preview()',context);
  if(modelPlan)vm.runInContext('compiledPlan='+JSON.stringify(modelPlan)+';compiledText=$("prompt").value;',context);
- vm.runInContext('deploy();for(let n=0;n<3601&&mode==="running";n++)update(1/60);',context);
+ vm.runInContext('deploy();for(let n=0;n<10801&&mode==="running";n++)update(1/60);',context);
  return JSON.parse(vm.runInContext('JSON.stringify({events:damageEvents.length,mode,hp:player.hp,enemyHp:enemy.hp,x:player.x,y:player.y,ammo:player.ammo,plan})',context));
 }
 const rush=simulate('Rush the enemy and fire aggressively.'),sniper=simulate('Keep distance and aim like a sniper.');
@@ -43,3 +43,4 @@ assert.notEqual(rush.x,sniper.x);assert.ok(rush.events>0||sniper.events>0,'comba
 const custom=simulate('Unusual tactics',{style:'balanced',preferred:400,cover:true,coverBelow:.8,evade:true,retreat:true,retreatBelow:.3,firePolicy:'inRange',explanation:'test'});
 assert.equal(custom.plan.preferred,400);assert.equal(custom.plan.retreatBelow,.3);assert.ok(Number.isFinite(custom.x));
 console.log(JSON.stringify({rush,sniper,custom},null,2));
+
