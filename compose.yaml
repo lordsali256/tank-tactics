@@ -7,6 +7,7 @@ services:
       TANK_PUBLIC_ORIGIN: http://192.168.1.10:8878
       TANK_BIND_HOST: 192.168.1.10
       TANK_DATA_DIR: /data
+      TANK_COACH_MODEL: qwen2.5-coder:3b
     network_mode: host
     volumes:
       - ./data:/data

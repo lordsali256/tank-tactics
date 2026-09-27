@@ -3,7 +3,7 @@ import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {matchRequest} from './matches.mjs';
 import {generateCoach} from './coach.mjs';
-const model='qwen3.5:4b', port=8878;
+const model=process.env.TANK_COACH_MODEL||'qwen3.5:4b', port=8878;
 const publicOrigin=process.env.TANK_PUBLIC_ORIGIN;
 const allowedOrigins=new Set([`http://127.0.0.1:${port}`,`http://localhost:${port}`,...(publicOrigin?[publicOrigin]:[])]);
 const schema={type:'object',additionalProperties:false,required:['style','preferred','cover','coverBelow','evade','retreat','retreatBelow','firePolicy','explanation'],properties:{style:{type:'string',enum:['rush','balanced','sniper']},preferred:{type:'integer',minimum:100,maximum:450},cover:{type:'boolean'},coverBelow:{type:'number',minimum:0,maximum:1},evade:{type:'boolean'},retreat:{type:'boolean'},retreatBelow:{type:'number',minimum:0,maximum:1},firePolicy:{type:'string',enum:['always','inRange','stationary']},explanation:{type:'string'}}};

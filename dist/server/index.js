@@ -4132,7 +4132,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   function collectBattleReport(win) {
     return { version: 1, round, map: campaign.map, result: win ? "victory" : "defeat", durationSeconds: Math.round(elapsed * 10) / 10, units: battleUnits.map((t) => ({ id: t.id, side: t.team, type: t.type, tier: t.tier, callsign: callsign(t), survived: t.hp > 0, remainingHealth: Math.ceil(t.hp), maximumHealth: t.maxHp, shotsFired: t.reportShots || 0, damageDealt: Math.round(t.reportDamageDealt || 0), damageTaken: Math.round(t.reportDamageTaken || 0), hitEvents: t.reportHits || 0, kills: t.reportKills || 0, reserveAmmo: t.reserve, magazineAmmo: t.ammo, pickups: t.reportPickups || {} })) };
   }
-  let coachSettings = { provider: "ollama", endpoint: "http://127.0.0.1:11434/api/chat", model: "qwen2.5-coder:7b", enabled: false, autoApply: false }, coachApiKey = "";
+  let coachSettings = { provider: "ollama", endpoint: "http://127.0.0.1:11434/api/chat", model: "qwen2.5-coder:3b", enabled: false, autoApply: false }, coachApiKey = "";
   try {
     const saved = JSON.parse(localStorage.getItem("tank-coach-preferences"));
     if (saved) coachSettings = { ...coachSettings, ...saved, enabled: false, autoApply: false };
@@ -4442,7 +4442,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     if (coachSettings.enabled && lastBattleReport && coachAttemptedReport !== lastBattleReport) requestCoach();
   };
   $("coachProvider").onchange = () => {
-    const presets = { ollama: ["http://127.0.0.1:11434/api/chat", "qwen2.5-coder:7b"], gemini: ["https://generativelanguage.googleapis.com/v1beta", ""], openai: ["https://api.openai.com/v1/responses", ""], compatible: ["", ""] };
+    const presets = { ollama: ["http://127.0.0.1:11434/api/chat", "qwen2.5-coder:3b"], gemini: ["https://generativelanguage.googleapis.com/v1beta", ""], openai: ["https://api.openai.com/v1/responses", ""], compatible: ["", ""] };
     const [endpoint, model] = presets[$("coachProvider").value];
     $("coachEndpoint").value = endpoint;
     $("coachModel").value = model;
