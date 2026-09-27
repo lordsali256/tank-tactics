@@ -22,7 +22,7 @@ Put one order on each line. Selectors are **all**, a unit type, or a stable call
 
 Conditions use that unit's current resource percentage. Example: **all seek-health when hp below 50%**. Conditions can also gate core orders. Values must be 0–100%. Inactive conditional orders and retreat orders locked below ★★★ do not use a slot.
 
-★ executes the latest **3** matching active orders, ★★ the latest **5**, and ★★★ the latest **7**. Leader designation is free. Later matching settings win; movement functions override the normal movement plan. Functions unique to a unit run only on that type, even with **all**. A mismatched explicit type, such as **infantry brace**, is rejected. Combining three matching units upgrades stars and capacity. Put your most important orders last.
+★ executes the latest **3** matching active orders, ★★ the latest **5**, and ★★★ the latest **7**. Leader designation is free. Later matching settings win; movement functions override the normal movement plan. Functions unique to a unit run only on that type, even with **all**. A mismatched explicit type, such as **infantry brace**, is rejected. Combining three matching units upgrades stars and capacity. Put your most important orders last. Stationary orders (stop, hover, steady, siege and field-hospital) suppress automatic dodging and zigzag while holding position. An active emergency retreat or cover condition takes priority; a later movement order can replace the stationary order.
 
 Callsigns remain stable during a fight when units die. The dead unit disappears; its simulation record remains for results. Leader orders fall back to a surviving tank or another surviving ally.
 

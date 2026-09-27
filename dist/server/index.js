@@ -1435,7 +1435,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       my = ux * Math.sin(t.phase * 2);
       action = "Strafing";
     }
-    if (p.evade) {
+    if (p.evade && !t.suppressEvasion) {
       mx -= uy * Math.sin(t.phase * 5) * 0.6;
       my += ux * Math.sin(t.phase * 5) * 0.6;
     }
@@ -2489,7 +2489,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
         if (campaign.map === "volcanic" && Math.hypot(t.x - W * 0.5, t.y - H * 0.22) < 150) motion = { mx: t.x - W * 0.5, my: t.y - H * 0.22, action: "Leaving hazard" };
       }
     }
-    if (motion && activeFunction(t, "zigzag") && foe) {
+    if (motion && Math.hypot(motion.mx, motion.my) > 0.01 && activeFunction(t, "zigzag") && foe) {
       motion.mx -= ny * Math.sin(t.phase * 6) * 0.7;
       motion.my += nx * Math.sin(t.phase * 6) * 0.7;
     }
@@ -2500,6 +2500,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       }
       if (t.functionRoute) motion = { ...motion, mx: t.functionRoute[0] - t.x, my: t.functionRoute[1] - t.y };
     }
+    t.suppressEvasion = !!motion && Math.hypot(motion.mx, motion.my) < 0.01;
     return motion;
   }
   const previousFormation = formationVector;
@@ -2529,6 +2530,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     t.activeFunctions = Object.values(orders).filter((r) => r.name).map((r) => r.name);
     const s = t.stats, foe = t.target?.hp > 0 ? t.target : nearestFoe(t);
     t.functionFireHold = false;
+    t.suppressEvasion = false;
     if (orders.range) t.plan.preferred = orders.range.value;
     if (orders.stance) {
       t.plan.style = orders.stance.value;
