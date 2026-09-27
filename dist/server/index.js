@@ -59,7 +59,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     seed = Math.imul(seed, 1664525) + 1013904223 >>> 0;
     return seed / 4294967296;
   }
-  let commands2 = /* @__PURE__ */ new Set(["radar", "gun", "drive", "cover"]), round = 1, wins = 0, mode = "ready", player = null, enemy = null, shots = [], sparks = [], plan = null, last = performance.now(), elapsed = 0, logTimer = 0, nextBuff = null, activeBuff = null;
+  let commands = /* @__PURE__ */ new Set(["radar", "gun", "drive", "cover"]), round = 1, wins = 0, mode = "ready", player = null, enemy = null, shots = [], sparks = [], plan = null, last = performance.now(), elapsed = 0, logTimer = 0, nextBuff = null, activeBuff = null;
   const $ = (id) => document.getElementById(id);
   function commandRender() {
     const root = $("commands");
@@ -67,27 +67,27 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     for (const [id, name, desc] of commandInfo) {
       const b2 = document.createElement("button");
       b2.type = "button";
-      b2.className = "command" + (commands2.has(id) ? " selected" : "");
+      b2.className = "command" + (commands.has(id) ? " selected" : "");
       b2.textContent = name;
       b2.title = desc;
       b2.setAttribute("aria-label", name + ": " + desc);
-      b2.setAttribute("aria-pressed", commands2.has(id));
+      b2.setAttribute("aria-pressed", commands.has(id));
       b2.onclick = () => {
         if (mode === "running" || mode === "won" || compiling) return;
-        if (commands2.has(id)) commands2.delete(id);
-        else commands2.add(id);
+        if (commands.has(id)) commands.delete(id);
+        else commands.add(id);
         commandRender();
         preview();
-        $("message").textContent = name + " command " + (commands2.has(id) ? "enabled." : "disabled.");
+        $("message").textContent = name + " command " + (commands.has(id) ? "enabled." : "disabled.");
       };
       root.append(b2);
     }
   }
   function parsePlan() {
-    if (compiledPlan && compiledText === $("prompt").value) return { ...compiledPlan, cover: compiledPlan.cover && commands2.has("cover") };
+    if (compiledPlan && compiledText === $("prompt").value) return { ...compiledPlan, cover: compiledPlan.cover && commands.has("cover") };
     const s = $("prompt").value.toLowerCase();
     const style = /snip|keep distance|long.range|perch|stay back/.test(s) ? "sniper" : /rush|aggress|charge|close|push forward/.test(s) ? "rush" : "balanced";
-    return { coverBelow: 0.52, retreatBelow: 0.28, firePolicy: "always", style, cover: commands2.has("cover") && /cover|hide|shelter/.test(s), evade: /evade|dodge|zigzag|strafe/.test(s), retreat: /retreat|fall back|pull back/.test(s), preferred: style === "sniper" ? 360 : style === "rush" ? 145 : 255 };
+    return { coverBelow: 0.52, retreatBelow: 0.28, firePolicy: "always", style, cover: commands.has("cover") && /cover|hide|shelter/.test(s), evade: /evade|dodge|zigzag|strafe/.test(s), retreat: /retreat|fall back|pull back/.test(s), preferred: style === "sniper" ? 360 : style === "rush" ? 145 : 255 };
   }
   function styleLabel() {
     return plan.style === "rush" ? "Rush" : plan.style === "sniper" ? "Snipe" : "Mid range";
@@ -102,9 +102,9 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     if (plan.cover) parts.push("seek cover below " + Math.round(plan.coverBelow * 100) + "% hull");
     if (plan.evade) parts.push("zigzag movement");
     if (plan.retreat) parts.push("retreat below " + Math.round(plan.retreatBelow * 100) + "% hull");
-    if (commands2.has("perch") && plan.style === "sniper") parts.push("steady sniper aim");
-    if (!commands2.has("gun")) parts.push("Gun command off");
-    if (!commands2.has("drive")) parts.push("Drive command off");
+    if (commands.has("perch") && plan.style === "sniper") parts.push("steady sniper aim");
+    if (!commands.has("gun")) parts.push("Gun command off");
+    if (!commands.has("drive")) parts.push("Drive command off");
     $("planPreview").textContent = parts.join(" \xB7 ") + " \xB7 Fire: " + plan.firePolicy + (compiledPlan && compiledText === $("prompt").value ? ". " + compiledPlan.explanation : ". Rule parser preview.");
     if (mode !== "running") updateProgramLive("Awaiting deployment");
     renderStats();
@@ -112,8 +112,8 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   function renderStats() {
     const root = $("statList");
     root.replaceChildren();
-    const isRush = plan?.style === "rush", isSnipe = plan?.style === "sniper", speed = 104 * (activeBuff?.kind === "speed" ? 1.15 : 1), damage = 24 * (activeBuff?.kind === "damage" ? 1.2 : 1), spread = isSnipe ? commands2.has("perch") ? 0.025 : 0.045 : isRush ? 0.16 : 0.09, radar = commands2.has("radar") ? commands2.has("perch") && isSnipe ? 650 : 580 : 240;
-    const stats = [["Hull integrity", "160 HP"], ["Magazine", (player?.ammo ?? 6) + " / 6 rounds"], ["Magazine reload", "2.4 sec"], ["Turret traverse", "160\xB0 / sec"], ["Gun damage", commands2.has("gun") ? damage.toFixed(1) : "Gun off"], ["Reload time", commands2.has("gun") ? (isRush ? 0.64 : isSnipe ? 0.9 : 0.77) + " sec" : "Gun off"], ["Tank speed", commands2.has("drive") ? speed.toFixed(0) + " units/s" : "Drive off"], ["Radar range", radar + " units"], ["Preferred range", plan.preferred + " units"], ["Aim spread", (spread * 180 / Math.PI).toFixed(1) + "\xB0"], ["Cover reduction", plan.cover ? "28% near cover" : "Off"], ["Duck dodge", commands2.has("duck") && plan.evade ? "17%" : "Off"], ["Round buff", activeBuff ? activeBuff.buff : nextBuff ? nextBuff.buff + " (next)" : "None"]];
+    const isRush = plan?.style === "rush", isSnipe = plan?.style === "sniper", speed = 104 * (activeBuff?.kind === "speed" ? 1.15 : 1), damage = 24 * (activeBuff?.kind === "damage" ? 1.2 : 1), spread = isSnipe ? commands.has("perch") ? 0.025 : 0.045 : isRush ? 0.16 : 0.09, radar = commands.has("radar") ? commands.has("perch") && isSnipe ? 650 : 580 : 240;
+    const stats = [["Hull integrity", "160 HP"], ["Magazine", (player?.ammo ?? 6) + " / 6 rounds"], ["Magazine reload", "2.4 sec"], ["Turret traverse", "160\xB0 / sec"], ["Gun damage", commands.has("gun") ? damage.toFixed(1) : "Gun off"], ["Reload time", commands.has("gun") ? (isRush ? 0.64 : isSnipe ? 0.9 : 0.77) + " sec" : "Gun off"], ["Tank speed", commands.has("drive") ? speed.toFixed(0) + " units/s" : "Drive off"], ["Radar range", radar + " units"], ["Preferred range", plan.preferred + " units"], ["Aim spread", (spread * 180 / Math.PI).toFixed(1) + "\xB0"], ["Cover reduction", plan.cover ? "28% near cover" : "Off"], ["Duck dodge", commands.has("duck") && plan.evade ? "17%" : "Off"], ["Round buff", activeBuff ? activeBuff.buff : nextBuff ? nextBuff.buff + " (next)" : "None"]];
     for (const [name, value] of stats) {
       const cell = document.createElement("div"), label = document.createElement("small"), number = document.createElement("b");
       cell.className = "stat-cell";
@@ -316,7 +316,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     if (!collides(t.x, y, t.r)) t.y = y;
   }
   function fire(t, target) {
-    const isP = t.team === "player", speed = 450, baseDamage = isP ? 24 : 17 + round * 2, damage = baseDamage * (isP && activeBuff?.kind === "damage" ? 1.2 : 1), spread = isP ? plan.style === "sniper" ? commands2.has("perch") ? 0.025 : 0.045 : plan.style === "rush" ? 0.16 : 0.09 : 0.15;
+    const isP = t.team === "player", speed = 450, baseDamage = isP ? 24 : 17 + round * 2, damage = baseDamage * (isP && activeBuff?.kind === "damage" ? 1.2 : 1), spread = isP ? plan.style === "sniper" ? commands.has("perch") ? 0.025 : 0.045 : plan.style === "rush" ? 0.16 : 0.09 : 0.15;
     const a2 = t.angle + (random() - 0.5) * spread;
     t.ammo--;
     if (t.ammo === 0) t.reloading = 2.4;
@@ -372,15 +372,15 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       action += " \xB7 zigzag";
     }
     const speed = t.stats.speed * (isP && activeBuff?.kind === "speed" ? 1.15 : 1);
-    if (!isP || commands2.has("drive")) moveTank(t, mx, my, speed, dt);
+    if (!isP || commands.has("drive")) moveTank(t, mx, my, speed, dt);
     else action = "Holding position (Drive off)";
     const aim = Math.atan2(foe.y - t.y, foe.x - t.x), turn = Math.atan2(Math.sin(aim - t.angle), Math.cos(aim - t.angle));
     t.angle += clamp(turn, -2.8 * dt, 2.8 * dt);
-    const sensor = isP ? commands2.has("radar") ? commands2.has("perch") && p.style === "sniper" ? 650 : 580 : 240 : 580;
-    if (isP && !commands2.has("radar") && dist > sensor) action = "Searching without Radar";
-    const policyOK = p.firePolicy === "always" || (p.firePolicy === "inRange" ? Math.abs(dist - p.preferred) <= 45 : !commands2.has("drive") || Math.hypot(mx, my) < 0.1);
+    const sensor = isP ? commands.has("radar") ? commands.has("perch") && p.style === "sniper" ? 650 : 580 : 240 : 580;
+    if (isP && !commands.has("radar") && dist > sensor) action = "Searching without Radar";
+    const policyOK = p.firePolicy === "always" || (p.firePolicy === "inRange" ? Math.abs(dist - p.preferred) <= 45 : !commands.has("drive") || Math.hypot(mx, my) < 0.1);
     if (t.reloading > 0) action = "Reloading magazine \xB7 " + t.reloading.toFixed(1) + "s";
-    if (t.ammo > 0 && t.reloading <= 0 && Math.abs(turn) < 0.12 && policyOK && t.cooldown <= 0 && dist < sensor && (t.stats.flying || t.stats.indirect || !lineBlocked(t.x, t.y, foe.x, foe.y)) && (!isP || commands2.has("gun"))) {
+    if (t.ammo > 0 && t.reloading <= 0 && Math.abs(turn) < 0.12 && policyOK && t.cooldown <= 0 && dist < sensor && (t.stats.flying || t.stats.indirect || !lineBlocked(t.x, t.y, foe.x, foe.y)) && (!isP || commands.has("gun"))) {
       fire(t, foe);
       action = "Firing " + p.style + " plan";
       if (logTimer <= 0) message(isP ? "Your tank fires." : "Enemy tank fires.");
@@ -406,7 +406,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
         let damage = s.damage;
         if (target.team === "player" && plan.cover && nearRock(target)) damage *= 0.72;
         if (target.team === "player" && activeBuff?.kind === "armor") damage *= 0.8;
-        if (target.team === "player" && commands2.has("duck") && plan.evade && random() < 0.17) damage = 0;
+        if (target.team === "player" && commands.has("duck") && plan.evade && random() < 0.17) damage = 0;
         target.hp = clamp(target.hp - damage, 0, target.maxHp);
         target.hitFlash = 0.2;
         sparks.push({ x: s.x, y: s.y, life: 0.3, color: damage ? "#f8e6a6" : "#a6d7ff" });
@@ -561,7 +561,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     $("reset").disabled = true;
     $("modelStatus").textContent = "Local AI is compiling your instruction\u2026";
     try {
-      const out = await requestLocalPlan(text, selectedUnit(), [...commands2]);
+      const out = await requestLocalPlan(text, selectedUnit(), [...commands]);
       if (id !== compileId) return;
       compiledPlan = out.plan;
       compiledText = text;
@@ -616,7 +616,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   const rosterKey = "tank-tactics-roster-v1";
   let roster = [], selectedId = "", rosterSerial = 0, economy = { credits: 100, slots: 1, reserve: {} };
   let levelReward = null;
-  function newUnit(type, tier = 1) {
+  function newUnit2(type, tier = 1) {
     return { id: "unit-" + ++rosterSerial, type, tier, instruction: "", commands: [] };
   }
   function unlocked(u) {
@@ -635,7 +635,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     const u = selectedUnit();
     if (!u) return;
     u.instruction = $("prompt").value;
-    u.commands = [...commands2];
+    u.commands = [...commands];
     saveRoster();
   }
   try {
@@ -655,7 +655,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   } catch {
   }
   if (!roster.length) {
-    roster.push(newUnit("tank"));
+    roster.push(newUnit2("tank"));
     selectedId = roster[0].id;
   }
   function unitStats(u = selectedUnit()) {
@@ -667,7 +667,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     if (!skipSave) saveProgram();
     selectedId = id;
     const u = selectedUnit();
-    commands2 = new Set((u.instruction ? u.commands : unlocked(u)).filter((c) => unlocked(u).includes(c)));
+    commands = new Set((u.instruction ? u.commands : unlocked(u)).filter((c) => unlocked(u).includes(c)));
     $("prompt").value = u.instruction || "Keep moving, fire in range, and hold " + unitStats(u).range + " range.";
     compiledPlan = null;
     compiledText = "";
@@ -718,7 +718,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     saveProgram();
     const group = roster.filter((u) => u.type === type && u.tier === tier);
     if (group.length < 3) return;
-    const active = group.find((u) => u.id === selectedId), consumed = active ? [active, ...group.filter((u) => u !== active).slice(0, 2)] : group.slice(0, 3), base = active || consumed[0], up = newUnit(type, tier + 1);
+    const active = group.find((u) => u.id === selectedId), consumed = active ? [active, ...group.filter((u) => u !== active).slice(0, 2)] : group.slice(0, 3), base = active || consumed[0], up = newUnit2(type, tier + 1);
     up.instruction = base.instruction;
     up.equipment = { ...base.equipment || {} };
     up.deployed = base.deployed;
@@ -762,8 +762,8 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       if (explicit) p.preferred = clamp(Number(explicit[1]), 100, 450);
       else if (p.style === "balanced") p.preferred = unitStats().range;
     }
-    p.evade = p.evade && commands2.has("duck");
-    p.retreat = p.retreat && commands2.has("retreat");
+    p.evade = p.evade && commands.has("duck");
+    p.retreat = p.retreat && commands.has("retreat");
     return p;
   };
   makeTank = function(team, x, y) {
@@ -779,7 +779,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     } else originalMove(t, dx, dy, speed, dt);
   };
   fire = function(t, target) {
-    const isP = t.team === "player", s = t.stats, speed = t.type === "rocket" ? 330 : t.type === "artillery" ? 290 : 550, damage = s.damage * (isP && activeBuff?.kind === "damage" ? 1.2 : 1), spread = s.spread * (isP && commands2.has("perch") ? 0.5 : 1), a2 = t.angle + (random() - 0.5) * spread;
+    const isP = t.team === "player", s = t.stats, speed = t.type === "rocket" ? 330 : t.type === "artillery" ? 290 : 550, damage = s.damage * (isP && activeBuff?.kind === "damage" ? 1.2 : 1), spread = s.spread * (isP && commands.has("perch") ? 0.5 : 1), a2 = t.angle + (random() - 0.5) * spread;
     t.ammo--;
     if (t.ammo === 0) t.reloading = 2.4;
     shots.push({ team: t.team, x: t.x + Math.cos(a2) * (t.r + 7), y: t.y + Math.sin(a2) * (t.r + 7), vx: Math.cos(a2) * speed, vy: Math.sin(a2) * speed, damage, life: 2.4, indirect: s.indirect || s.flying });
@@ -875,7 +875,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   function claimReserve(type) {
     if (!unitTypes[type] || !(economy.reserve[type] > 0) || roster.length >= economy.slots || mode === "running" || compiling) return;
     economy.reserve[type]--;
-    roster.push(newUnit(type));
+    roster.push(newUnit2(type));
     saveRoster();
     renderStore();
     renderRoster();
@@ -935,7 +935,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
         if (!u) return;
         u.tier++;
         u.commands = [.../* @__PURE__ */ new Set([...u.commands, ...unlocked(u)])];
-        if (u.id === selectedId) commands2 = new Set(u.commands);
+        if (u.id === selectedId) commands = new Set(u.commands);
         compiledPlan = null;
         compiledText = "";
         commandRender();
@@ -943,7 +943,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
         levelReward.unit = unitTypes[u.type].name + " promoted to " + "\u2605".repeat(u.tier);
       } else if (option.action === "add") {
         if (roster.length < economy.slots) {
-          roster.push(newUnit(option.unitType));
+          roster.push(newUnit2(option.unitType));
           levelReward.unit = unitTypes[option.unitType].name + " \u2605 added to team";
         } else {
           economy.reserve[option.unitType] = (economy.reserve[option.unitType] || 0) + 1;
@@ -1052,17 +1052,35 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   function applyMap() {
     if (!maps[campaign.map]) campaign.map = "urban";
     campaign.view = "3d";
-    let m = 7907 + ["urban", "canyon", "volcanic", "coast"].indexOf(campaign.map) * 173;
+    let m = 7907 + round * 1039 + ["urban", "canyon", "volcanic", "coast"].indexOf(campaign.map) * 173;
     const rnd = () => {
       m = m * 1664525 + 1013904223 >>> 0;
       return m / 4294967296;
     };
     buildings = [];
-    for (let row = 0; row < 7; row++) for (let col = 0; col < 12; col++) {
-      const x = 240 + col * 205 + rnd() * 45, y = 75 + row * 235 + rnd() * 35, w = 65 + rnd() * 75, h = 65 + rnd() * 70;
-      if (Math.abs(y + h / 2 - H * 0.45) < 145 || campaign.map === "coast" && y + h > H * 0.54) continue;
-      const hp = 100 + Math.floor(rnd() * 100);
-      buildings.push({ id: "building-" + row + "-" + col, x, y, w, h, height: 40 + rnd() * 110, hp, maxHp: hp, style: (row + col) % 4, destroyed: false });
+    const add = (x, y, w, h, kind, height) => {
+      if (Math.abs(y + h / 2 - H * 0.45) < 145 || x < 140 || x + w > W - 140 || campaign.map === "coast" && y + h > H * 0.54) return;
+      const hp = kind === "mesa" ? 260 : 100 + Math.floor(rnd() * 100);
+      buildings.push({ id: "building-" + buildings.length, x, y, w, h, kind, height, hp, maxHp: hp, style: Math.floor(rnd() * 4), destroyed: false });
+    };
+    if (campaign.map === "urban") {
+      for (let row = 0; row < 7; row++) for (let col = 0; col < 12; col++) add(240 + col * 205 + rnd() * 35, 75 + row * 235 + rnd() * 30, 65 + rnd() * 75, 65 + rnd() * 70, ["apartment", "warehouse", "church", "silo", "bunker"][Math.floor(rnd() * 5)], 40 + rnd() * 110);
+    } else if (campaign.map === "canyon") {
+      for (let i = 0; i < 62; i++) {
+        const x = 190 + rnd() * (W - 420), y = rnd() * H;
+        add(x, y, 45 + rnd() * 100, 45 + rnd() * 85, i % 5 ? "mesa" : "bunker", i % 5 ? 65 + rnd() * 130 : 32);
+      }
+    } else if (campaign.map === "volcanic") {
+      for (let i = 0; i < 66; i++) {
+        const angle = i * 2.4, r = 220 + rnd() * 750, x = W * 0.5 + Math.cos(angle) * r, y = H * 0.25 + Math.sin(angle) * r;
+        if (y < 30 || y > H - 150) continue;
+        add(x, y, 55 + rnd() * 65, 55 + rnd() * 65, ["mesa", "dome", "silo", "bunker"][i % 4], i % 4 === 0 ? 90 : 45 + rnd() * 40);
+      }
+    } else {
+      for (let i = 0; i < 60; i++) {
+        const row = Math.floor(i / 15), col = i % 15;
+        add(170 + col * 175 + rnd() * 30, 35 + row * 180 + rnd() * 25, 60 + rnd() * 75, 55 + rnd() * 60, ["warehouse", "lighthouse", "crane", "bunker"][i % 4], 40 + rnd() * 70);
+      }
     }
     rocks.splice(0, rocks.length, ...buildings);
     for (const b2 of campaign.base || []) if (b2.kind === "wall" && !onlinePlaying) rocks.push({ x: b2.x - 18 - (b2.tier - 1) * 4, y: b2.y - 40, w: 36 + (b2.tier - 1) * 8, h: 80 });
@@ -1232,7 +1250,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     if (!data || data.version !== 1 || !Array.isArray(data.units) || !data.units.length || data.units.length > 15) throw Error("Use a version 1 unit collection with 1\u201315 units.");
     return data.units.map((u) => {
       if (!unitTypes[u.type] || !Number.isInteger(u.tier) || u.tier < 1 || u.tier > 3 || typeof u.instruction !== "string" || u.instruction.length > 2e3 || !Array.isArray(u.commands)) throw Error("Invalid unit type, tier or instruction.");
-      const fresh = newUnit(u.type, u.tier);
+      const fresh = newUnit2(u.type, u.tier);
       fresh.instruction = u.instruction;
       fresh.commands = u.commands.filter((c) => unlocked(fresh).includes(c));
       fresh.equipment = {};
@@ -1283,8 +1301,8 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   }
   resetPositions = function() {
     applyMap();
-    const squad2 = roster.filter((u) => u.deployed !== false && (!unitTypes[u.type].water || campaign.map === "coast")).slice(0, 15);
-    const team = squad2.length ? squad2 : [selectedUnit()];
+    const squad = roster.filter((u) => u.deployed !== false && (!unitTypes[u.type].water || campaign.map === "coast")).slice(0, 15);
+    const team = squad.length ? squad : [selectedUnit()];
     battleUnits = team.map((u, i) => spawnCombat(u, "player", i, team.length));
     for (let i = 0; i < Math.min(15, 1 + Math.floor((round - 1) / 4)); i++) {
       const types2 = availableTypes(), type = round === 1 ? "tank" : types2[(i + round - 1) % types2.length];
@@ -1558,7 +1576,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     }
     squadDeploy();
     if (mode === "running") {
-      replayInputs = JSON.parse(JSON.stringify({ roster, selectedId, map: campaign.map, base: campaign.base, round, prompt: $("prompt").value, commands: [...commands2], compiledPlan, compiledText, activeBuff }));
+      replayInputs = JSON.parse(JSON.stringify({ roster, selectedId, map: campaign.map, base: campaign.base, round, prompt: $("prompt").value, commands: [...commands], compiledPlan, compiledText, activeBuff }));
       $("mapSelect").disabled = true;
     }
   };
@@ -1741,7 +1759,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     selectedId = s.selectedId;
     round = s.round;
     campaign = s.campaign;
-    commands2 = s.commands;
+    commands = s.commands;
     compiledPlan = s.compiledPlan;
     compiledText = s.compiledText;
     activeBuff = s.activeBuff;
@@ -1766,14 +1784,14 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       $("message").textContent = "Finish a battle to record a replay.";
       return;
     }
-    replaySaved = { roster, selectedId, round, campaign: { ...campaign }, prompt: $("prompt").value, commands: commands2, compiledPlan, compiledText, activeBuff };
+    replaySaved = { roster, selectedId, round, campaign: { ...campaign }, prompt: $("prompt").value, commands, compiledPlan, compiledText, activeBuff };
     replaying = true;
     roster = JSON.parse(JSON.stringify(replayRecord.roster));
     selectedId = replayRecord.selectedId;
     round = replayRecord.round;
     campaign.map = replayRecord.map;
     campaign.base = JSON.parse(JSON.stringify(replayRecord.base || []));
-    commands2 = new Set(replayRecord.commands);
+    commands = new Set(replayRecord.commands);
     compiledPlan = replayRecord.compiledPlan;
     compiledText = replayRecord.compiledText;
     activeBuff = replayRecord.activeBuff;
@@ -1900,7 +1918,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       sparks = data.sparks;
       pickups = data.pickups || [];
       if (data.buildings) {
-        const geometryChanged = buildings.length !== data.buildings.length || buildings.some((b2, i) => b2.id !== data.buildings[i]?.id || b2.destroyed !== data.buildings[i]?.destroyed);
+        const geometryChanged = buildings.length !== data.buildings.length || buildings.some((b2, i) => b2.id !== data.buildings[i]?.id || b2.x !== data.buildings[i]?.x || b2.kind !== data.buildings[i]?.kind || b2.destroyed !== data.buildings[i]?.destroyed);
         buildings = data.buildings;
         rocks.splice(0, rocks.length, ...buildings.filter((b2) => !b2.destroyed));
         if (geometryChanged) worldRevision++;
@@ -1915,12 +1933,13 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       $("arenaState").textContent = "Online \xB7 server controlled";
       if (data.status === "finished") {
         onlinePlaying = false;
-        mode = data.winner === data.seat ? "won" : "lost";
+        const onlineWin = data.winner === data.seat;
+        mode = "ready";
         $("prompt").disabled = false;
         $("deploy").disabled = false;
         $("result").classList.add("show");
-        $("resultTitle").textContent = mode === "won" ? "Multiplayer victory" : "Multiplayer defeat";
-        $("resultText").textContent = "Server confirmed result. This test match does not grant campaign rewards.";
+        $("resultTitle").textContent = onlineWin ? "Multiplayer victory" : "Multiplayer defeat";
+        $("resultText").textContent = "Server confirmed result. Online win: 60 credits; loss: 15 credits. Open the protected online armory to refresh your balance.";
         onlineSession = null;
         localStorage.removeItem("tank-match-v1");
         return;
@@ -1952,7 +1971,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     const migration = rosterKey + "-single-tank-v2";
     if (!localStorage.getItem(migration)) {
       localStorage.setItem(rosterKey + "-legacy-archive", JSON.stringify({ version: 1, units: roster }));
-      roster = [newUnit("tank")];
+      roster = [newUnit2("tank")];
       selectedId = roster[0].id;
       economy.slots = 1;
       economy.reserve = {};
@@ -2109,7 +2128,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     autonomousTick(t, dt);
   };
   commandRender = function() {
-    commands2 = new Set(unlocked(selectedUnit()));
+    commands = new Set(unlocked(selectedUnit()));
     $("commands").replaceChildren();
   };
   saveProgram = function() {
@@ -2186,14 +2205,14 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   resetRun = function() {
     if (compiling) return;
     if (replaying) restoreReplay();
-    roster = [newUnit("tank")];
+    roster = [newUnit2("tank")];
     selectedId = roster[0].id;
     economy.reserve = {};
     squadScript = defaultSquadScript;
     compiledPlan = null;
     compiledText = "";
     $("prompt").value = squadScript;
-    commands2 = new Set(unlocked(roster[0]));
+    commands = new Set(unlocked(roster[0]));
     continueRunReset();
     saveProgram();
     $("message").textContent = "New run: one tank versus one AI tank. Recruit allies from victory rewards.";
@@ -2541,6 +2560,19 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     }
     for (const fn of t.activeFunctions) {
       switch (fn) {
+        case "scan-fast":
+          s.scanInterval *= 0.5;
+          break;
+        case "seek-cover":
+          t.plan.cover = true;
+          t.plan.coverBelow = 1;
+          break;
+        case "leave-cover":
+          t.plan.cover = false;
+          break;
+        case "take-knee":
+          s.accuracy *= 1.5;
+          break;
         case "kite":
           t.plan.preferred = 330;
           break;
@@ -2791,11 +2823,440 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     $("functionDialog").showModal();
   };
   $("closeFunctions").onclick = () => $("functionDialog").close();
+  const PythonUnit2 = /* @__PURE__ */ (() => {
+    const cache = /* @__PURE__ */ new Map();
+    function expression(source) {
+      const tokens = [];
+      let i = 0;
+      while (i < source.length) {
+        if (/\s/.test(source[i])) {
+          i++;
+          continue;
+        }
+        const part = source.slice(i), m = part.match(/^(?:\d+(?:\.\d+)?|[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)?|"[^"\\]*"|'[^'\\]*'|==|!=|<=|>=|[<>+*/%(),-])/);
+        if (!m) throw Error("Unsupported expression near " + part);
+        tokens.push(m[0]);
+        i += m[0].length;
+      }
+      let at = 0;
+      const precedence = { or: 1, and: 2, "==": 3, "!=": 3, "<": 3, ">": 3, "<=": 3, ">=": 3, "+": 4, "-": 4, "*": 5, "/": 5, "%": 5 };
+      function atom() {
+        const token2 = tokens[at++];
+        if (!token2) throw Error("Expected a value");
+        if (token2 === "not" || token2 === "-") return { op: token2 === "not" ? "not" : "neg", value: token2 === "not" ? parse(3) : atom() };
+        if (token2 === "(") {
+          const value = parse(0);
+          if (tokens[at++] !== ")") throw Error("Missing closing parenthesis");
+          return value;
+        }
+        if (/^\d/.test(token2)) return { literal: Number(token2) };
+        if (/^['"]/.test(token2)) return { literal: token2.slice(1, -1) };
+        if (token2 === "True" || token2 === "False") return { literal: token2 === "True" };
+        if (!/^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)?$/.test(token2) || token2.includes("__")) throw Error("Unsupported value " + token2);
+        if (tokens[at] === "(") {
+          at++;
+          const args = [];
+          if (tokens[at] !== ")") do {
+            args.push(parse(0));
+            if (tokens[at] !== ",") break;
+            at++;
+          } while (true);
+          if (tokens[at++] !== ")") throw Error("Missing closing parenthesis");
+          return { call: token2, args };
+        }
+        return { name: token2 };
+      }
+      function parse(min) {
+        let left = atom();
+        while (precedence[tokens[at]] >= min) {
+          const op = tokens[at++], right = parse(precedence[op] + 1);
+          left = { op, left, right };
+        }
+        return left;
+      }
+      const tree = parse(0);
+      if (at !== tokens.length) throw Error("Unexpected expression token");
+      return tree;
+    }
+    function compile(text, methods2, sensors2, queries2) {
+      if (cache.has(text)) return cache.get(text);
+      const errors = [], body = [], names2 = /* @__PURE__ */ new Set(), calls = [];
+      try {
+        let checkExpr = function(tree) {
+          if (tree.name) {
+            if (tree.name.includes(".")) {
+              if (!sensors2.has(tree.name)) throw Error("Unknown read-only sensor " + tree.name);
+            } else if (!names2.has(tree.name)) throw Error("Unknown local variable " + tree.name);
+          }
+          if (tree.call) {
+            if (!queries2.has(tree.call)) throw Error("Unknown sensor function " + tree.call);
+            const zero = /* @__PURE__ */ new Set(["unit.health_drop_distance", "unit.ammo_drop_distance", "unit.shield_drop_distance", "unit.boost_drop_distance", "unit.nearest_cover_distance", "unit.enemy_shield", "unit.enemy_health", "unit.has_ammo", "unit.can_fire"]);
+            const expected = zero.has(tree.call) ? 0 : 1;
+            if (tree.args.length !== expected) throw Error(tree.call + " needs " + expected + " arguments");
+            for (const a2 of tree.args) checkExpr(a2);
+          }
+          if (tree.value) checkExpr(tree.value);
+          if (tree.left) checkExpr(tree.left);
+          if (tree.right) checkExpr(tree.right);
+        }, value = function(source) {
+          const ast = expression(source);
+          checkExpr(ast);
+          return ast;
+        }, block = function(indent, depth) {
+          if (depth > 6) throw Error("Maximum condition nesting is six");
+          const result2 = [];
+          while (cursor < lines.length && lines[cursor].indent >= indent) {
+            const line = lines[cursor];
+            if (line.indent !== indent) throw Error("Use four-space indentation at line " + line.line);
+            cursor++;
+            if (line.text === "return") {
+              result2.push({ kind: "return" });
+              continue;
+            }
+            if (line.text === "pass") {
+              result2.push({ kind: "pass" });
+              continue;
+            }
+            const condition = line.text.match(/^if (.+):$/);
+            if (condition) {
+              const branches = [{ test: value(condition[1]), body: block(indent + 4, depth + 1) }];
+              if (!branches[0].body.length) throw Error("An if block needs a body");
+              while (cursor < lines.length && lines[cursor].indent === indent && /^elif |^else:/.test(lines[cursor].text)) {
+                const next = lines[cursor++], elif = next.text.match(/^elif (.+):$/);
+                if (!elif && next.text !== "else:") throw Error("Invalid else");
+                branches.push({ test: elif ? value(elif[1]) : null, body: block(indent + 4, depth + 1) });
+                if (!branches.at(-1).body.length) throw Error("Empty condition block");
+                if (!elif) break;
+              }
+              result2.push({ kind: "if", branches });
+              continue;
+            }
+            const assignment = line.text.match(/^([a-z][a-z0-9_]*) = (.+)$/);
+            if (assignment) {
+              if (["unit", "squad"].includes(assignment[1]) || assignment[1].includes("__")) throw Error("Cannot replace game objects");
+              const ast2 = value(assignment[2]);
+              names2.add(assignment[1]);
+              result2.push({ kind: "assign", name: assignment[1], value: ast2 });
+              continue;
+            }
+            const action = line.text.match(/^unit\.([a-z][a-z0-9_]*)\((.*)\)$/);
+            if (!action || !methods2.has(action[1])) throw Error("Unknown action at line " + line.line + ": " + line.text);
+            const ast = expression("unit." + action[1] + "(" + action[2] + ")");
+            const count = action[1] === "move_to" ? 2 : ["hold_range", "focus", "follow", "protect", "flank", "stance", "retreat_below"].includes(action[1]) ? 1 : 0;
+            if (ast.args.length !== count) throw Error(action[1] + " needs " + count + " arguments");
+            for (const a2 of ast.args) checkExpr(a2);
+            calls.push(action[1]);
+            result2.push({ kind: "action", method: action[1], args: ast.args });
+          }
+          return result2;
+        };
+        if (typeof text !== "string" || text.length > 3e3) throw Error("Python scripts are limited to 3000 characters");
+        const lines = text.split("\n").map((raw, i) => {
+          if (raw.includes("	")) throw Error("Use spaces, not tabs (line " + (i + 1) + ")");
+          const clean = raw.replace(/\s+#.*$/, "").trimEnd();
+          return { indent: clean.length - clean.trimStart().length, text: clean.trim(), line: i + 1 };
+        }).filter((l) => l.text && !l.text.startsWith("#"));
+        if (lines.length > 120) throw Error("Limit: 120 nonempty lines");
+        if (lines[0]?.text !== "def tick(unit, squad):" || lines[0].indent !== 0) throw Error("Begin with def tick(unit, squad):");
+        let cursor = 1;
+        body.push(...block(4, 0));
+        if (cursor !== lines.length) throw Error("Only tick() is allowed at the top level");
+        if (!calls.length) throw Error("Include at least one unit action");
+      } catch (e) {
+        errors.push(e.message);
+      }
+      const result = { body, errors, calls };
+      if (cache.size > 200) cache.clear();
+      cache.set(text, result);
+      return result;
+    }
+    function execute(program, env, query, action) {
+      const locals = /* @__PURE__ */ Object.create(null);
+      let budget = 240;
+      function read(ast) {
+        if (--budget < 0) throw Error("Script instruction budget exceeded");
+        if (Object.hasOwn(ast, "literal")) return ast.literal;
+        if (ast.name) return ast.name.includes(".") ? env[ast.name] : locals[ast.name];
+        if (ast.call) return query(ast.call, ast.args.map(read));
+        if (ast.op === "not") return !read(ast.value);
+        if (ast.op === "neg") return -read(ast.value);
+        const a2 = read(ast.left);
+        if (ast.op === "and") return a2 && read(ast.right);
+        if (ast.op === "or") return a2 || read(ast.right);
+        const b2 = read(ast.right);
+        switch (ast.op) {
+          case "==":
+            return a2 === b2;
+          case "!=":
+            return a2 !== b2;
+          case "<":
+            return a2 < b2;
+          case ">":
+            return a2 > b2;
+          case "<=":
+            return a2 <= b2;
+          case ">=":
+            return a2 >= b2;
+          case "+":
+            return Number(a2) + Number(b2);
+          case "-":
+            return a2 - b2;
+          case "*":
+            return a2 * b2;
+          case "/":
+            return b2 ? a2 / b2 : 0;
+          case "%":
+            return b2 ? a2 % b2 : 0;
+        }
+      }
+      function block(body) {
+        for (const node of body) {
+          if (--budget < 0) throw Error("Script instruction budget exceeded");
+          if (node.kind === "return") return true;
+          if (node.kind === "assign") locals[node.name] = read(node.value);
+          if (node.kind === "action") action(node.method, node.args.map(read));
+          if (node.kind === "if") {
+            for (const branch of node.branches) if (branch.test === null || read(branch.test)) {
+              if (block(branch.body)) return true;
+              break;
+            }
+          }
+        }
+        return false;
+      }
+      block(program.body);
+    }
+    return { compile, execute };
+  })();
+  const extraPythonActions = [
+    ["General", "focus-air", "Target the nearest aircraft."],
+    ["General", "focus-ground", "Target the nearest ground enemy."],
+    ["General", "focus-armor", "Prioritize tanks, artillery, scout cars and boats."],
+    ["General", "focus-support", "Prioritize medics and engineers."],
+    ["General", "focus-farthest", "Select the farthest enemy within radar."],
+    ["General", "focus-low-shield", "Select the enemy with the least shield."],
+    ["General", "focus-high-damage", "Select the enemy with the highest weapon damage."],
+    ["General", "focus-unmarked", "Prefer enemies not already marked by your squad."],
+    ["General", "hold-fire", "Do not shoot until another branch allows firing."],
+    ["General", "fire-at-will", "Use the normal firing policy."],
+    ["General", "seek-cover", "Seek building cover at any health level."],
+    ["General", "leave-cover", "Disable automatic cover seeking."],
+    ["General", "retreat-to-spawn", "Move toward the original spawn point."],
+    ["General", "scan-fast", "Scan twice as often."],
+    ["General", "repair-self", "Repair 8 HP: 15-second cooldown and 30 energy."],
+    ["General", "boost", "Boost movement 15% for 2 seconds: 10-second cooldown, 20 energy."],
+    ["General", "vent-heat", "Remove 35 heat: 8-second cooldown, 15 energy."],
+    ["General", "shield-pulse", "Add 15 shield up to 60: 12-second cooldown, 25 energy."],
+    ["Infantry", "take-knee", "Stop and improve aim accuracy by 50%."],
+    ["Helicopter", "breakaway", "Withdraw from the current enemy."],
+    ["Artillery", "counter-battery", "Prioritize enemy artillery."],
+    ["Boat", "shore-bombard", "Prioritize land enemies."],
+    ["Scout", "recon-route", "Patrol a wider 260-unit route."],
+    ["Rocket", "save-rockets", "Hold fire against foot troops."],
+    ["Medic", "follow-patient", "Approach the most injured foot ally."],
+    ["Engineer", "follow-vehicle", "Approach the most injured vehicle."],
+    ["Sniper", "relocate", "Move sideways after a shot."],
+    ["Tank", "cover-infantry", "Approach injured foot allies to screen them."]
+  ];
+  for (const [group, name, description] of extraPythonActions) {
+    const fn = { group, name, description };
+    squadFunctions.push(fn);
+    functionByName.set(name, fn);
+  }
+  const pythonCore = /* @__PURE__ */ new Set(["hold_range", "focus", "follow", "protect", "flank", "stance", "retreat_below", "move_to"]);
+  const pythonMethods = /* @__PURE__ */ new Set([...pythonCore, ...squadFunctions.map((f) => f.name.replaceAll("-", "_"))]);
+  const pythonSensors = /* @__PURE__ */ new Set(["unit.hp_ratio", "unit.ammo_ratio", "unit.energy_ratio", "unit.heat_ratio", "unit.kind", "unit.tier", "unit.callsign", "unit.x", "unit.y", "unit.shield", "unit.reserve_ammo", "unit.reloading", "unit.enemy_distance", "unit.enemy_kind", "unit.has_enemy", "unit.in_cover", "unit.moving", "unit.cooldown", "squad.ally_count", "squad.enemy_count", "squad.leader_alive", "squad.lowest_ally_hp", "squad.elapsed", "squad.map"]);
+  const pythonQueries = /* @__PURE__ */ new Set(["unit.distance_to", "unit.ally_health", "unit.ally_alive", "unit.enemies_within", "unit.allies_within", "unit.air_enemies_within", "unit.armored_enemies_within", "unit.foot_enemies_within", "unit.health_drop_distance", "unit.ammo_drop_distance", "unit.shield_drop_distance", "unit.boost_drop_distance", "unit.nearest_cover_distance", "unit.enemy_shield", "unit.enemy_health", "unit.incoming_shots", "unit.has_ammo", "unit.can_fire", "unit.can_afford", "unit.ability_ready", "unit.map_is", "unit.is_type", "squad.has_type", "squad.count_type", "squad.injured_allies"]);
+  const legacyScriptParser = parseSquadScript, legacyOrders = ordersFor;
+  function compilePython(text) {
+    return PythonUnit2.compile(text, pythonMethods, pythonSensors, pythonQueries);
+  }
+  parseSquadScript = function(text) {
+    if (/^\s*def tick/.test(text)) {
+      const p = compilePython(text);
+      return { leader: "tank-1", rules: p.calls.map((name) => ({ name })), errors: p.errors };
+    }
+    return legacyScriptParser(text);
+  };
+  function pythonFromLegacy(text, type = "tank") {
+    if (/^\s*def tick/.test(text)) return text;
+    const p = legacyScriptParser(text || ""), lines = ["def tick(unit, squad):"];
+    for (const r of p.rules) {
+      let action = r.name ? r.name.replaceAll("-", "_") + "()" : r.kind === "range" ? "hold_range(" + r.value + ")" : r.kind === "focus" ? 'focus("' + r.value + '")' : r.kind === "stance" ? 'stance("' + r.value + '")' : r.kind === "retreat" ? "retreat_below(" + r.value + ")" : r.kind === "formation" ? r.mode + '("' + r.anchor + '")' : null;
+      if (!action) continue;
+      const conditions = [];
+      if (r.selector !== "all") {
+        conditions.push(r.selector.includes("-") ? 'unit.callsign == "' + r.selector + '"' : 'unit.kind == "' + r.selector + '"');
+      }
+      if (r.condition) conditions.push("unit." + r.condition.stat + "_ratio " + (r.condition.op === "below" ? "<" : ">") + " " + r.condition.value);
+      if (conditions.length) {
+        lines.push("    if " + conditions.join(" and ") + ":");
+        lines.push("        unit." + action);
+      } else lines.push("    unit." + action);
+    }
+    return lines.length > 1 ? lines.join("\n") : 'def tick(unit, squad):\n    unit.focus("nearest")\n    unit.hold_range(' + unitTypes[type].range + ")";
+  }
+  basicScript = function(type) {
+    return 'def tick(unit, squad):\n    unit.focus("nearest")\n    unit.hold_range(' + unitTypes[type].range + ")";
+  };
+  for (const u of roster) if (u.unitScript) u.unitScript = pythonFromLegacy(u.unitScript, u.type);
+  if (campaign.orders) campaign.orders = pythonFromLegacy(campaign.orders);
+  function pythonEnvironment(t) {
+    const foe = t.target?.hp > 0 ? t.target : nearestFoe(t), allies = battleUnits.filter((u) => u.team === t.team && u.hp > 0), enemies = battleUnits.filter((u) => u.team !== t.team && u.hp > 0);
+    return { foe, allies, enemies, values: { "unit.hp_ratio": t.hp / t.maxHp, "unit.ammo_ratio": t.ammo / t.stats.mag, "unit.energy_ratio": t.energy / t.stats.energyCapacity, "unit.heat_ratio": t.heat / t.stats.heatCapacity, "unit.kind": t.type, "unit.tier": t.tier, "unit.callsign": callsign(t), "unit.x": t.x, "unit.y": t.y, "unit.shield": t.shield, "unit.reserve_ammo": t.reserve, "unit.reloading": t.reloading > 0, "unit.enemy_distance": foe ? Math.hypot(foe.x - t.x, foe.y - t.y) : 99999, "unit.enemy_kind": foe?.type || "none", "unit.has_enemy": !!foe, "unit.in_cover": nearRock(t), "unit.moving": t.velocity > 1, "unit.cooldown": t.cooldown, "squad.ally_count": allies.length, "squad.enemy_count": enemies.length, "squad.leader_alive": allies.some((u) => u.type === "tank"), "squad.lowest_ally_hp": Math.min(...allies.map((u) => u.hp / u.maxHp), 1), "squad.elapsed": elapsed, "squad.map": campaign.map } };
+  }
+  function pythonQuery(t, context, name, args) {
+    const a2 = args[0], distance = (u) => Math.hypot(u.x - t.x, u.y - t.y), ally = context.allies.find((u) => callsign(u) === a2), range = Number.isFinite(a2) ? clamp(a2, 0, 1e3) : 300;
+    switch (name) {
+      case "unit.distance_to":
+        return ally ? distance(ally) : 99999;
+      case "unit.ally_health":
+        return ally ? ally.hp / ally.maxHp : 0;
+      case "unit.ally_alive":
+        return !!ally;
+      case "unit.enemies_within":
+        return context.enemies.filter((u) => distance(u) < range).length;
+      case "unit.allies_within":
+        return context.allies.filter((u) => u !== t && distance(u) < range).length;
+      case "unit.air_enemies_within":
+        return context.enemies.filter((u) => u.stats.flying && distance(u) < range).length;
+      case "unit.armored_enemies_within":
+        return context.enemies.filter((u) => !footTypes.has(u.type) && distance(u) < range).length;
+      case "unit.foot_enemies_within":
+        return context.enemies.filter((u) => footTypes.has(u.type) && distance(u) < range).length;
+      case "unit.nearest_cover_distance":
+        return Math.min(99999, ...rocks.map((r) => Math.hypot(r.x + r.w / 2 - t.x, r.y + r.h / 2 - t.y)));
+      case "unit.enemy_shield":
+        return context.foe?.shield || 0;
+      case "unit.enemy_health":
+        return context.foe ? context.foe.hp / context.foe.maxHp : 0;
+      case "unit.incoming_shots":
+        return shots.filter((s) => s.team !== t.team && Math.hypot(s.x - t.x, s.y - t.y) < range).length;
+      case "unit.has_ammo":
+        return t.ammo > 0 || t.reserve > 0;
+      case "unit.can_fire":
+        return t.ammo > 0 && t.cooldown <= 0 && t.reloading <= 0 && t.heat < t.stats.heatCapacity;
+      case "unit.can_afford":
+        return t.energy >= Math.max(0, Number(a2) || 0);
+      case "unit.ability_ready":
+        return elapsed >= (t.abilityTimers?.[String(a2).replaceAll("_", "-")] || 0);
+      case "unit.map_is":
+        return campaign.map === a2;
+      case "unit.is_type":
+        return t.type === a2;
+      case "squad.has_type":
+        return context.allies.some((u) => u.type === a2);
+      case "squad.count_type":
+        return context.allies.filter((u) => u.type === a2).length;
+      case "squad.injured_allies":
+        return context.allies.filter((u) => u.hp / u.maxHp < (Number(a2) || 0.5)).length;
+      default: {
+        const kind = { "unit.health_drop_distance": "health", "unit.ammo_drop_distance": "ammo", "unit.shield_drop_distance": "shield", "unit.boost_drop_distance": "overdrive" }[name];
+        return Math.min(99999, ...pickups.filter((p) => !p.used && p.kind === kind).map(distance));
+      }
+    }
+  }
+  function pythonRules(t, text) {
+    const program = compilePython(text);
+    if (program.errors.length) return [];
+    const context = pythonEnvironment(t), rules = [];
+    PythonUnit2.execute(program, context.values, (name, args) => pythonQuery(t, context, name, args), (method, args) => {
+      let rule;
+      const value = args[0];
+      if (method === "hold_range" && Number.isFinite(value)) rule = { kind: "range", value: clamp(value, 100, 500) };
+      else if (method === "focus" && ["nearest", "weakest", "leader"].includes(value)) rule = { kind: "focus", value };
+      else if (method === "stance" && ["balanced", "rush", "sniper"].includes(value)) rule = { kind: "stance", value };
+      else if (["follow", "protect", "flank"].includes(method) && typeof value === "string" && /^(leader|[a-z]+-[1-9][0-9]?)$/.test(value)) rule = { kind: "formation", mode: method, anchor: value };
+      else if (method === "retreat_below" && t.tier >= 3 && Number.isFinite(value)) rule = { kind: "retreat", value: clamp(value, 0.05, 0.8) };
+      else if (method === "move_to" && args.length === 2 && args.every(Number.isFinite)) rule = { kind: "ability:move-to", name: "move-to", point: { x: clamp(args[0], 30, W - 30), y: clamp(args[1], 30, H - 30) } };
+      else {
+        const fn = functionByName.get(method.replaceAll("_", "-"));
+        if (fn && (!groupType(fn.group) || groupType(fn.group) === t.type)) rule = { kind: fn.name.startsWith("focus-") || ["counter-battery", "shore-bombard"].includes(fn.name) ? "focus" : ["seek-cover", "leave-cover"].includes(fn.name) ? "cover-policy" : ["hold-fire", "fire-at-will"].includes(fn.name) ? "fire-policy" : "ability:" + fn.name, name: fn.name };
+      }
+      if (rule) rules.push(rule);
+    });
+    return rules;
+  }
+  ordersFor = function(t) {
+    if (t.squadScript && !/^\s*def tick/.test(t.squadScript) && t.squadScript !== t.unitScript) return legacyOrders(t);
+    const own = t.unitScript || scriptFor(t);
+    if (!/^\s*def tick/.test(own)) return legacyOrders(t);
+    try {
+      const rules = [...pythonRules(t, own), ...t.squadPython ? pythonRules(t, t.squadPython) : []], result = {};
+      for (const rule of rules.slice(-capacityFor(t))) result[rule.kind] = rule;
+      return result;
+    } catch (e) {
+      t.scriptError = e.message;
+      return {};
+    }
+  };
+  const pythonMotion = functionMotion;
+  functionMotion = function(t, foe) {
+    let motion = pythonMotion(t, foe);
+    const f = t.activeFunctions || [], toward = (a2) => a2 ? { mx: a2.x - t.x, my: a2.y - t.y, action: "Following assigned ally" } : null;
+    for (const name of f) {
+      if (["take-knee"].includes(name)) motion = { mx: 0, my: 0, action: "Taking a knee" };
+      if (["breakaway", "retreat-to-spawn"].includes(name)) motion = name === "retreat-to-spawn" ? toward({ x: t.homeX, y: t.homeY }) : foe ? { mx: t.x - foe.x, my: t.y - foe.y, action: "Breaking away" } : motion;
+      if (["follow-patient", "cover-infantry", "follow-vehicle"].includes(name)) {
+        const patient = injuredAlly(t, name !== "follow-vehicle", 1500);
+        if (patient && Math.hypot(patient.x - t.x, patient.y - t.y) > 80) motion = toward(patient);
+      }
+      if (name === "move-to") motion = toward(ordersFor(t)["ability:move-to"]?.point);
+      if (name === "recon-route") motion = toward({ x: t.homeX + Math.cos(t.phase * 0.25) * 260, y: t.homeY + Math.sin(t.phase * 0.25) * 260 });
+      if (name === "relocate" && foe && t.cooldown > 0.4) motion = { mx: -(foe.y - t.y), my: foe.x - t.x, action: "Relocating after shot" };
+    }
+    t.suppressEvasion = !!motion && Math.hypot(motion.mx, motion.my) < 0.01;
+    return motion;
+  };
+  const pythonTarget = chooseTarget;
+  chooseTarget = function(t) {
+    const functions = t.activeFunctions || [];
+    let foes = battleUnits.filter((u) => u.hp > 0 && u.team !== t.team && Math.hypot(u.x - t.x, u.y - t.y) < t.stats.radarRange);
+    for (const name of functions) {
+      const filter = { "focus-air": (u) => u.stats.flying, "focus-ground": (u) => !u.stats.flying, "focus-armor": (u) => !footTypes.has(u.type), "focus-support": (u) => ["medic", "engineer"].includes(u.type), "counter-battery": (u) => u.type === "artillery", "shore-bombard": (u) => !u.stats.water, "focus-unmarked": (u) => !(u.markedUntil > elapsed) }[name];
+      if (filter) {
+        const selected = foes.filter(filter);
+        if (selected.length) foes = selected;
+      }
+    }
+    if (functions.some((n) => n.startsWith("focus-") || ["counter-battery", "shore-bombard"].includes(n)) && foes.length) {
+      if (functions.includes("focus-low-shield")) foes.sort((a2, b2) => a2.shield - b2.shield);
+      else if (functions.includes("focus-high-damage")) foes.sort((a2, b2) => b2.stats.damage - a2.stats.damage);
+      else foes.sort((a2, b2) => (Math.hypot(a2.x - t.x, a2.y - t.y) - Math.hypot(b2.x - t.x, b2.y - t.y)) * (functions.includes("focus-farthest") ? -1 : 1));
+      return foes[0];
+    }
+    return pythonTarget(t);
+  };
+  const pythonTick = squadTick;
+  squadTick = function(t, dt) {
+    pythonTick(t, dt);
+    if (t.hp <= 0) return;
+    for (const name of t.activeFunctions || []) {
+      if (name === "hold-fire" || name === "save-rockets" && t.target && footTypes.has(t.target.type)) t.functionFireHold = true;
+      if (name === "repair-self" && t.hp < t.maxHp - 8) cooldownAbility(t, name, 15, 30, () => {
+        t.hp = Math.min(t.maxHp, t.hp + 8);
+      });
+      if (name === "boost" && t.boostTime <= 0) cooldownAbility(t, name, 10, 20, () => {
+        t.boostTime = 2;
+      });
+      if (name === "vent-heat" && t.heat > 35) cooldownAbility(t, name, 8, 15, () => {
+        t.heat -= 35;
+      });
+      if (name === "shield-pulse" && t.shield < 60) cooldownAbility(t, name, 12, 25, () => {
+        t.shield = Math.min(60, t.shield + 15);
+      });
+    }
+  };
+  const pythonFire = squadFire;
+  squadFire = function(t, target) {
+    if (activeFunction(t, "hold-fire") || activeFunction(t, "save-rockets") && footTypes.has(target.type)) return;
+    pythonFire(t, target);
+  };
   function basicScript(type) {
     return "all focus nearest\nall hold " + unitTypes[type].range;
   }
-  const makeIndependentUnit = newUnit;
-  newUnit = function(type, tier = 1) {
+  const makeIndependentUnit = newUnit2;
+  newUnit2 = function(type, tier = 1) {
     const u = makeIndependentUnit(type, tier);
     return { ...u, name: unitTypes[type].name, unitScript: basicScript(type), skin: "olive", upgrades: {} };
   };
@@ -2825,6 +3286,10 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   activeBuff = null;
   saveProgram = function() {
     campaign.orders = $("prompt").value;
+    if (campaign.orders && !/^def tick/.test(campaign.orders)) {
+      campaign.orders = pythonFromLegacy(campaign.orders);
+      $("prompt").value = campaign.orders;
+    }
     squadScript = campaign.orders;
     for (const u of roster) {
       u.commands = unlocked(u);
@@ -2846,8 +3311,14 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     const t = independentSpawn(u, team, index, count);
     t.name = u.name || unitTypes[u.type].name;
     t.skin = u.skin || "olive";
+    const npcScript = t.squadScript;
     t.unitScript = u.unitScript || basicScript(u.type);
-    if (!t.aiControlled) t.squadScript = u.squadScript || t.unitScript + (campaign.orders ? "\n" + campaign.orders : "");
+    if (!t.aiControlled) t.squadScript = t.unitScript;
+    t.squadPython = u.squadPython ?? campaign.orders;
+    if (t.aiControlled) {
+      t.unitScript = pythonFromLegacy(npcScript, u.type);
+      t.squadPython = "";
+    }
     t.basePlan = planForUnit(u);
     t.plan = { ...t.basePlan };
     return t;
@@ -2855,7 +3326,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   activateUnit = function(id) {
     if (mode === "running" || mode === "won") return;
     selectedId = id;
-    commands2 = new Set(unlocked(selectedUnit()));
+    commands = new Set(unlocked(selectedUnit()));
     saveRoster();
     resetPositions();
     preview();
@@ -2963,7 +3434,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   function loadScriptTarget() {
     const u = roster.find((u2) => u2.id === $("scriptTarget").value);
     $("pasteScript").value = u ? u.unitScript : campaign.orders;
-    $("scriptFeedback").textContent = u ? "Only " + u.name + " executes this script. Use all to address this unit." : "Squad orders apply after unit scripts and consume the same 3 / 5 / 7 command slots.";
+    $("scriptFeedback").textContent = u ? "Only " + u.name + " executes this script. Use unit methods to address this unit." : "Squad orders apply after unit scripts and consume the same 3 / 5 / 7 command slots.";
   }
   $("scriptsButton").onclick = () => {
     workshopChoices();
@@ -2979,6 +3450,10 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       return;
     }
     const parsed = parseSquadScript(text), u = roster.find((u2) => u2.id === $("scriptTarget").value);
+    if (text && !/^def tick\(unit, squad\):/.test(text)) {
+      $("scriptFeedback").textContent = "Paste a Python def tick(unit, squad): script.";
+      return;
+    }
     if (parsed.errors.length || u && !parsed.rules.length) {
       $("scriptFeedback").textContent = parsed.errors.join(" \xB7 ") || "A unit needs at least one order.";
       return;
@@ -3093,7 +3568,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     const root = $("storeCatalog");
     root.replaceChildren();
     for (const item of [...availableTypes().map((type) => ({ name: "Recruit " + unitTypes[type].name, price: 110 + Object.keys(unitTypes).indexOf(type) * 15, act: () => {
-      if (roster.length < economy.slots) roster.push(newUnit(type));
+      if (roster.length < economy.slots) roster.push(newUnit2(type));
       else economy.reserve[type] = (economy.reserve[type] || 0) + 1;
     } })), ...gearItems.filter((g) => !campaign.gear.includes(g.id)).map((g) => ({ name: g.name + " \xB7 " + g.slot, price: g.price, act: () => campaign.gear.push(g.id) }))]) {
       const b2 = document.createElement("button");
@@ -3118,7 +3593,11 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     for (let i = 0; i < units.length; i++) {
       const original = data.units[i], u = units[i];
       const text = original.unitScript || original.instruction;
-      if (typeof text === "string" && !parseSquadScript(text).errors.length && parseSquadScript(text).rules.length) u.unitScript = text;
+      if (typeof text === "string") {
+        const migrated = pythonFromLegacy(text, u.type);
+        if (!compilePython(migrated).errors.length) u.unitScript = migrated;
+      }
+      ;
       u.name = String(original.name || u.name).slice(0, 28);
       u.skin = ["olive", "arctic", "sunset", "neon"].includes(original.skin) ? original.skin : "olive";
       u.upgrades = {};
@@ -3141,15 +3620,15 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   $("reset").onclick = () => resetRun();
   matchSquad = function() {
     saveProgram();
-    return roster.filter((u) => u.deployed !== false && (!unitTypes[u.type].water || campaign.map === "coast")).map((u) => ({ ...u, instruction: u.unitScript, squadScript: u.unitScript + (campaign.orders ? "\n" + campaign.orders : ""), compiled: null }));
+    return roster.filter((u) => u.deployed !== false && (!unitTypes[u.type].water || campaign.map === "coast")).map((u) => ({ ...u, instruction: u.unitScript, squadScript: u.unitScript, squadPython: campaign.orders, compiled: null }));
   };
   let publicProfile = null;
   try {
     publicProfile = JSON.parse(localStorage.getItem("tank-online-profile-v1"));
   } catch {
   }
-  async function onlineAction(path) {
-    const response = await fetch("/api/matches/" + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ profile: publicProfile, name: $("commanderName").value.trim() || "Commander", units: matchSquad(), map: campaign.map }), signal: AbortSignal.timeout(15e3) }), data = await response.json();
+  async function onlineAction(path, extra = {}) {
+    const response = await fetch("/api/matches/" + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ profile: publicProfile, name: $("commanderName").value.trim() || "Commander", map: campaign.map, ...extra }), signal: AbortSignal.timeout(15e3) }), data = await response.json();
     if (data.profile) {
       publicProfile = data.profile;
       localStorage.setItem("tank-online-profile-v1", JSON.stringify(publicProfile));
@@ -3203,10 +3682,101 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     }
   };
   $("closeLeaderboard").onclick = () => $("leaderboardDialog").close();
+  $("menuButton").onclick = () => $("menuDialog").showModal();
+  $("closeMenu").onclick = () => $("menuDialog").close();
+  for (const b2 of $("menuDialog").querySelectorAll?.("[data-open]") || []) b2.addEventListener("click", () => $("menuDialog").close());
+  const filteredStore = renderStore;
+  renderStore = function() {
+    filteredStore();
+    const category = $("shopFilter").value;
+    for (const b2 of $("storeCatalog").children) b2.hidden = category !== "all" && !!category && !b2.textContent.toLowerCase().includes(category === "recruit" ? "recruit" : category);
+  };
+  $("shopFilter").onchange = renderStore;
+  const filteredArmory = renderLoadout;
+  renderLoadout = function() {
+    filteredArmory();
+    const category = $("armoryFilter").value;
+    for (const c of $("gearCatalog").children) c.hidden = category !== "all" && !!category && !c.textContent.toLowerCase().includes(category);
+  };
+  $("armoryFilter").onchange = renderLoadout;
+  matchAction = async function(action) {
+    if (mode === "running" || mode === "won") return;
+    try {
+      const data = await onlineAction(action, { code: $("matchCode").value.trim().toUpperCase() });
+      onlineSession = data;
+      localStorage.setItem("tank-match-v1", JSON.stringify(data));
+      $("matchCode").value = data.code;
+      await pollMatch();
+    } catch (e) {
+      $("multiplayerMessage").textContent = e.message;
+    }
+  };
+  $("cancelInvite").onclick = async () => {
+    try {
+      await onlineAction("cancel", { code: $("matchCode").value.trim().toUpperCase() });
+      onlineSession = null;
+      localStorage.removeItem("tank-match-v1");
+      $("multiplayerMessage").textContent = "Waiting invite cancelled.";
+    } catch (e) {
+      $("multiplayerMessage").textContent = e.message;
+    }
+  };
+  async function renderOnlineShop(item, edits) {
+    try {
+      const data = await onlineAction(item ? "shop" : "profile", { ...item ? { item } : {}, ...edits || {} });
+      $("onlineBalance").textContent = data.account.credits + " verified credits \xB7 " + data.account.roster.length + " / " + data.account.slots + " slots \xB7 Level " + data.level;
+      const root = $("onlineShop");
+      root.replaceChildren();
+      for (const u of data.account.roster) {
+        const card = document.createElement("details");
+        card.className = "unit-card";
+        const h = document.createElement("summary");
+        h.textContent = u.name + " \xB7 " + "\u2605".repeat(u.tier) + " \xB7 Script & equipment";
+        const editor = document.createElement("textarea");
+        editor.value = u.unitScript;
+        editor.setAttribute("aria-label", "Python script for " + u.name);
+        const save2 = document.createElement("button");
+        save2.textContent = "Save online script";
+        save2.onclick = () => renderOnlineShop(null, { scripts: [{ id: u.id, unitScript: editor.value }] });
+        card.append(h, editor, save2);
+        for (const gear of data.account.gear) {
+          const b2 = document.createElement("button");
+          b2.textContent = "Equip " + gear;
+          b2.onclick = () => renderOnlineShop("equip:" + u.id + ":" + gear);
+          card.append(b2);
+        }
+        if (data.account.roster.filter((v) => v.type === u.type && v.tier === u.tier).length >= 3 && u.tier < 3) {
+          const b2 = document.createElement("button");
+          b2.textContent = "Combine 3";
+          b2.onclick = () => renderOnlineShop("combine:" + u.type + ":" + u.tier);
+          card.append(b2);
+        }
+        root.append(card);
+      }
+      const squad = document.createElement("textarea");
+      squad.value = data.account.squadScript || "";
+      squad.setAttribute("aria-label", "Online squad Python script");
+      const save = document.createElement("button");
+      save.textContent = "Save online squad script";
+      save.onclick = () => renderOnlineShop(null, { squadScript: squad.value });
+      root.append(squad, save);
+      for (const offer of data.catalog) {
+        const b2 = document.createElement("button");
+        b2.className = "reward";
+        b2.textContent = (gearItems.find((g) => "gear:" + g.id === offer.id)?.name || offer.name) + " \xB7 " + offer.price + " credits";
+        b2.disabled = offer.price > data.account.credits;
+        b2.onclick = () => renderOnlineShop(offer.id);
+        root.append(b2);
+      }
+    } catch (e) {
+      $("onlineBalance").textContent = e.message;
+    }
+  }
+  $("loadOnlineShop").onclick = () => renderOnlineShop();
   saveProgram();
   const initial = selectedUnit();
   selectedId = initial.id;
-  commands2 = new Set((initial.instruction ? initial.commands : unlocked(initial)).filter((c) => unlocked(initial).includes(c)));
+  commands = new Set((initial.instruction ? initial.commands : unlocked(initial)).filter((c) => unlocked(initial).includes(c)));
   $("prompt").value = campaign.orders || "";
   saveRoster();
   renderRoster();
@@ -3231,7 +3801,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   selectedId = a[0].id;
   campaign.map = map;
   round = 1;
-  commands2 = new Set(a[0].commands);
+  commands = new Set(a[0].commands);
   $("prompt").value = a[0].instruction;
   compiledPlan = a[0].compiled;
   compiledText = a[0].instruction;
@@ -3281,101 +3851,390 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   } };
 }
 
-// dist/server/index.js
-var types = ["tank", "infantry", "helicopter", "rocket", "artillery", "sniper", "boat", "medic", "engineer", "scout"];
-var commands = ["radar", "gun", "drive", "cover", "duck", "perch", "retreat"];
-function randomToken(bytes) {
-  return [...crypto.getRandomValues(new Uint8Array(bytes))].map((v) => v.toString(16).padStart(2, "0")).join("");
-}
-function squad(input, prefix) {
-  if (!Array.isArray(input) || !input.length || input.length > 15) throw Error("Select 1\u201315 deployed units");
-  return input.map((u, i) => {
-    if (!types.includes(u.type) || !Number.isInteger(u.tier) || u.tier < 1 || u.tier > 3 || typeof u.instruction !== "string" || u.instruction.length > 3e3) throw Error("Invalid unit data");
-    const gear = {};
-    for (const slot of ["weapon", "armor", "utility"]) if (new RegExp("^" + slot + "-[0-9]$").test(u.equipment?.[slot] || "")) gear[slot] = u.equipment[slot];
-    const allowed = commands.slice(0, u.tier === 1 ? 3 : u.tier === 2 ? 5 : 7);
-    let compiled = null;
-    const p = u.compiled;
-    if (p && ["rush", "balanced", "sniper"].includes(p.style) && ["always", "inRange", "stationary"].includes(p.firePolicy)) compiled = { style: p.style, preferred: Math.max(100, Math.min(500, Number(p.preferred) || 255)), cover: allowed.includes("cover") && !!p.cover, evade: allowed.includes("duck") && !!p.evade, retreat: allowed.includes("retreat") && !!p.retreat, coverBelow: Math.max(0, Math.min(0.9, Number(p.coverBelow) || 0.5)), retreatBelow: Math.max(0, Math.min(0.8, Number(p.retreatBelow) || 0.25)), firePolicy: p.firePolicy, explanation: "" };
-    const upgrades = {};
-    for (const kind of ["armor", "speed", "damage", "loading", "shield", "demolition", "repair", "critical"]) upgrades[kind] = Math.max(0, Math.min(20, Math.floor(Number(u.upgrades?.[kind]) || 0)));
-    return { id: prefix + i, name: String(u.name || u.type).slice(0, 28), skin: ["olive", "arctic", "sunset", "neon"].includes(u.skin) ? u.skin : "olive", unitScript: typeof u.unitScript === "string" ? u.unitScript.slice(0, 3e3) : "all focus nearest\nall hold 255", upgrades, type: u.type, tier: u.tier, instruction: u.instruction, squadScript: typeof u.squadScript === "string" && u.squadScript.length <= 6001 ? u.squadScript : "all focus nearest\nall hold 255", commands: Array.isArray(u.commands) ? u.commands.filter((c) => allowed.includes(c)) : allowed, equipment: gear, compiled, compiledText: u.instruction };
-  });
-}
-async function saveDefense(env, input) {
-  const units = squad(input.units, "def-"), map = ["urban", "canyon", "volcanic", "coast"].includes(input.map) ? input.map : "urban", name = String(input.name || "Commander").trim().slice(0, 28) || "Commander";
-  let id = input.profile?.id, token = input.profile?.token;
-  if (id) {
-    const row = await env.DB.prepare("SELECT token FROM arena_profiles WHERE id=?").bind(id).first();
-    if (!row || !token || row.token !== token) throw Error("Invalid player profile");
-  } else {
-    id = randomToken(12);
-    token = randomToken(24);
+// cloud/python-policy.mjs
+var PythonUnit = /* @__PURE__ */ (() => {
+  const cache = /* @__PURE__ */ new Map();
+  function expression(source) {
+    const tokens = [];
+    let i = 0;
+    while (i < source.length) {
+      if (/\s/.test(source[i])) {
+        i++;
+        continue;
+      }
+      const part = source.slice(i), m = part.match(/^(?:\d+(?:\.\d+)?|[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)?|"[^"\\]*"|'[^'\\]*'|==|!=|<=|>=|[<>+*/%(),-])/);
+      if (!m) throw Error("Unsupported expression near " + part);
+      tokens.push(m[0]);
+      i += m[0].length;
+    }
+    let at = 0;
+    const precedence = { or: 1, and: 2, "==": 3, "!=": 3, "<": 3, ">": 3, "<=": 3, ">=": 3, "+": 4, "-": 4, "*": 5, "/": 5, "%": 5 };
+    function atom() {
+      const token2 = tokens[at++];
+      if (!token2) throw Error("Expected a value");
+      if (token2 === "not" || token2 === "-") return { op: token2 === "not" ? "not" : "neg", value: token2 === "not" ? parse(3) : atom() };
+      if (token2 === "(") {
+        const value = parse(0);
+        if (tokens[at++] !== ")") throw Error("Missing closing parenthesis");
+        return value;
+      }
+      if (/^\d/.test(token2)) return { literal: Number(token2) };
+      if (/^['"]/.test(token2)) return { literal: token2.slice(1, -1) };
+      if (token2 === "True" || token2 === "False") return { literal: token2 === "True" };
+      if (!/^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)?$/.test(token2) || token2.includes("__")) throw Error("Unsupported value " + token2);
+      if (tokens[at] === "(") {
+        at++;
+        const args = [];
+        if (tokens[at] !== ")") do {
+          args.push(parse(0));
+          if (tokens[at] !== ",") break;
+          at++;
+        } while (true);
+        if (tokens[at++] !== ")") throw Error("Missing closing parenthesis");
+        return { call: token2, args };
+      }
+      return { name: token2 };
+    }
+    function parse(min) {
+      let left = atom();
+      while (precedence[tokens[at]] >= min) {
+        const op = tokens[at++], right = parse(precedence[op] + 1);
+        left = { op, left, right };
+      }
+      return left;
+    }
+    const tree = parse(0);
+    if (at !== tokens.length) throw Error("Unexpected expression token");
+    return tree;
   }
-  const power = Math.round(units.reduce((n, u) => n + 100 * (1 + 0.8 * (u.tier - 1)) + Object.keys(u.equipment).length * 12 + Object.values(u.upgrades).reduce((a, b) => a + b, 0) * 2, 0));
-  await env.DB.prepare("INSERT INTO arena_profiles (id,token,name,units,map,power,updated) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,units=excluded.units,map=excluded.map,power=excluded.power,updated=excluded.updated").bind(id, token, name, JSON.stringify(units), map, power, Date.now()).run();
-  return { profile: { id, token }, units, map, power };
+  function compile(text, methods2, sensors2, queries2) {
+    if (cache.has(text)) return cache.get(text);
+    const errors = [], body = [], names2 = /* @__PURE__ */ new Set(), calls = [];
+    try {
+      let checkExpr = function(tree) {
+        if (tree.name) {
+          if (tree.name.includes(".")) {
+            if (!sensors2.has(tree.name)) throw Error("Unknown read-only sensor " + tree.name);
+          } else if (!names2.has(tree.name)) throw Error("Unknown local variable " + tree.name);
+        }
+        if (tree.call) {
+          if (!queries2.has(tree.call)) throw Error("Unknown sensor function " + tree.call);
+          const zero = /* @__PURE__ */ new Set(["unit.health_drop_distance", "unit.ammo_drop_distance", "unit.shield_drop_distance", "unit.boost_drop_distance", "unit.nearest_cover_distance", "unit.enemy_shield", "unit.enemy_health", "unit.has_ammo", "unit.can_fire"]);
+          const expected = zero.has(tree.call) ? 0 : 1;
+          if (tree.args.length !== expected) throw Error(tree.call + " needs " + expected + " arguments");
+          for (const a of tree.args) checkExpr(a);
+        }
+        if (tree.value) checkExpr(tree.value);
+        if (tree.left) checkExpr(tree.left);
+        if (tree.right) checkExpr(tree.right);
+      }, value = function(source) {
+        const ast = expression(source);
+        checkExpr(ast);
+        return ast;
+      }, block = function(indent, depth) {
+        if (depth > 6) throw Error("Maximum condition nesting is six");
+        const result2 = [];
+        while (cursor < lines.length && lines[cursor].indent >= indent) {
+          const line = lines[cursor];
+          if (line.indent !== indent) throw Error("Use four-space indentation at line " + line.line);
+          cursor++;
+          if (line.text === "return") {
+            result2.push({ kind: "return" });
+            continue;
+          }
+          if (line.text === "pass") {
+            result2.push({ kind: "pass" });
+            continue;
+          }
+          const condition = line.text.match(/^if (.+):$/);
+          if (condition) {
+            const branches = [{ test: value(condition[1]), body: block(indent + 4, depth + 1) }];
+            if (!branches[0].body.length) throw Error("An if block needs a body");
+            while (cursor < lines.length && lines[cursor].indent === indent && /^elif |^else:/.test(lines[cursor].text)) {
+              const next = lines[cursor++], elif = next.text.match(/^elif (.+):$/);
+              if (!elif && next.text !== "else:") throw Error("Invalid else");
+              branches.push({ test: elif ? value(elif[1]) : null, body: block(indent + 4, depth + 1) });
+              if (!branches.at(-1).body.length) throw Error("Empty condition block");
+              if (!elif) break;
+            }
+            result2.push({ kind: "if", branches });
+            continue;
+          }
+          const assignment = line.text.match(/^([a-z][a-z0-9_]*) = (.+)$/);
+          if (assignment) {
+            if (["unit", "squad"].includes(assignment[1]) || assignment[1].includes("__")) throw Error("Cannot replace game objects");
+            const ast2 = value(assignment[2]);
+            names2.add(assignment[1]);
+            result2.push({ kind: "assign", name: assignment[1], value: ast2 });
+            continue;
+          }
+          const action = line.text.match(/^unit\.([a-z][a-z0-9_]*)\((.*)\)$/);
+          if (!action || !methods2.has(action[1])) throw Error("Unknown action at line " + line.line + ": " + line.text);
+          const ast = expression("unit." + action[1] + "(" + action[2] + ")");
+          const count = action[1] === "move_to" ? 2 : ["hold_range", "focus", "follow", "protect", "flank", "stance", "retreat_below"].includes(action[1]) ? 1 : 0;
+          if (ast.args.length !== count) throw Error(action[1] + " needs " + count + " arguments");
+          for (const a of ast.args) checkExpr(a);
+          calls.push(action[1]);
+          result2.push({ kind: "action", method: action[1], args: ast.args });
+        }
+        return result2;
+      };
+      if (typeof text !== "string" || text.length > 3e3) throw Error("Python scripts are limited to 3000 characters");
+      const lines = text.split("\n").map((raw, i) => {
+        if (raw.includes("	")) throw Error("Use spaces, not tabs (line " + (i + 1) + ")");
+        const clean = raw.replace(/\s+#.*$/, "").trimEnd();
+        return { indent: clean.length - clean.trimStart().length, text: clean.trim(), line: i + 1 };
+      }).filter((l) => l.text && !l.text.startsWith("#"));
+      if (lines.length > 120) throw Error("Limit: 120 nonempty lines");
+      if (lines[0]?.text !== "def tick(unit, squad):" || lines[0].indent !== 0) throw Error("Begin with def tick(unit, squad):");
+      let cursor = 1;
+      body.push(...block(4, 0));
+      if (cursor !== lines.length) throw Error("Only tick() is allowed at the top level");
+      if (!calls.length) throw Error("Include at least one unit action");
+    } catch (e) {
+      errors.push(e.message);
+    }
+    const result = { body, errors, calls };
+    if (cache.size > 200) cache.clear();
+    cache.set(text, result);
+    return result;
+  }
+  function execute(program, env, query, action) {
+    const locals = /* @__PURE__ */ Object.create(null);
+    let budget = 240;
+    function read(ast) {
+      if (--budget < 0) throw Error("Script instruction budget exceeded");
+      if (Object.hasOwn(ast, "literal")) return ast.literal;
+      if (ast.name) return ast.name.includes(".") ? env[ast.name] : locals[ast.name];
+      if (ast.call) return query(ast.call, ast.args.map(read));
+      if (ast.op === "not") return !read(ast.value);
+      if (ast.op === "neg") return -read(ast.value);
+      const a = read(ast.left);
+      if (ast.op === "and") return a && read(ast.right);
+      if (ast.op === "or") return a || read(ast.right);
+      const b = read(ast.right);
+      switch (ast.op) {
+        case "==":
+          return a === b;
+        case "!=":
+          return a !== b;
+        case "<":
+          return a < b;
+        case ">":
+          return a > b;
+        case "<=":
+          return a <= b;
+        case ">=":
+          return a >= b;
+        case "+":
+          return Number(a) + Number(b);
+        case "-":
+          return a - b;
+        case "*":
+          return a * b;
+        case "/":
+          return b ? a / b : 0;
+        case "%":
+          return b ? a % b : 0;
+      }
+    }
+    function block(body) {
+      for (const node of body) {
+        if (--budget < 0) throw Error("Script instruction budget exceeded");
+        if (node.kind === "return") return true;
+        if (node.kind === "assign") locals[node.name] = read(node.value);
+        if (node.kind === "action") action(node.method, node.args.map(read));
+        if (node.kind === "if") {
+          for (const branch of node.branches) if (branch.test === null || read(branch.test)) {
+            if (block(branch.body)) return true;
+            break;
+          }
+        }
+      }
+      return false;
+    }
+    block(program.body);
+  }
+  return { compile, execute };
+})();
+var methods = /* @__PURE__ */ new Set(["hold_range", "focus", "follow", "protect", "flank", "stance", "retreat_below", "move_to", "advance", "withdraw", "stop", "patrol", "rally", "spread", "tighten", "kite", "orbit", "zigzag", "seek_health", "seek_ammo", "seek_shield", "seek_boost", "reload", "cooldown", "reserve_fire", "anti_air", "avoid_danger", "guard_point", "brace", "ram", "hull_down", "armor_piercing", "smoke", "sprint", "ambush", "suppress", "grenade", "strafe", "hover", "flare", "rocket_pod", "lock_on", "backblast", "bunker_buster", "barrage", "siege", "displace", "steady", "headshot", "camouflage", "broadside", "depth_charge", "triage", "field_hospital", "repair", "supply", "scan", "mark", "focus_air", "focus_ground", "focus_armor", "focus_support", "focus_farthest", "focus_low_shield", "focus_high_damage", "focus_unmarked", "hold_fire", "fire_at_will", "seek_cover", "leave_cover", "retreat_to_spawn", "scan_fast", "repair_self", "boost", "vent_heat", "shield_pulse", "take_knee", "breakaway", "counter_battery", "shore_bombard", "recon_route", "save_rockets", "follow_patient", "follow_vehicle", "relocate", "cover_infantry"]);
+var sensors = /* @__PURE__ */ new Set(["unit.hp_ratio", "unit.ammo_ratio", "unit.energy_ratio", "unit.heat_ratio", "unit.kind", "unit.tier", "unit.callsign", "unit.x", "unit.y", "unit.shield", "unit.reserve_ammo", "unit.reloading", "unit.enemy_distance", "unit.enemy_kind", "unit.has_enemy", "unit.in_cover", "unit.moving", "unit.cooldown", "squad.ally_count", "squad.enemy_count", "squad.leader_alive", "squad.lowest_ally_hp", "squad.elapsed", "squad.map"]);
+var queries = /* @__PURE__ */ new Set(["unit.distance_to", "unit.ally_health", "unit.ally_alive", "unit.enemies_within", "unit.allies_within", "unit.air_enemies_within", "unit.armored_enemies_within", "unit.foot_enemies_within", "unit.health_drop_distance", "unit.ammo_drop_distance", "unit.shield_drop_distance", "unit.boost_drop_distance", "unit.nearest_cover_distance", "unit.enemy_shield", "unit.enemy_health", "unit.incoming_shots", "unit.has_ammo", "unit.can_fire", "unit.can_afford", "unit.ability_ready", "unit.map_is", "unit.is_type", "squad.has_type", "squad.count_type", "squad.injured_allies"]);
+function validatePython(text) {
+  const result = PythonUnit.compile(text, methods, sensors, queries);
+  if (result.errors.length) throw Error(result.errors.join(" \xB7 "));
+  return text;
 }
+
+// dist/server/index.js
+var types = ["tank", "infantry", "rocket", "scout", "sniper", "medic", "artillery", "engineer", "boat", "helicopter"];
+var unlock = { tank: 1, infantry: 1, rocket: 1, scout: 2, sniper: 3, medic: 3, artillery: 4, engineer: 4, boat: 5, helicopter: 6 };
+var ranges = { tank: 255, infantry: 215, rocket: 320, scout: 245, sniper: 390, medic: 180, artillery: 420, engineer: 195, boat: 340, helicopter: 290 };
+var names = { tank: "Tank", infantry: "Infantry", rocket: "Rocket soldier", scout: "Scout car", sniper: "Sniper", medic: "Medic", artillery: "Artillery", engineer: "Engineer", boat: "Boat", helicopter: "Helicopter" };
+var token = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map((v) => v.toString(16).padStart(2, "0")).join("");
 var json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+var baseScript = (type) => 'def tick(unit, squad):\n    unit.focus("nearest")\n    unit.hold_range(' + ranges[type] + ")";
+function newUnit(type, id) {
+  return { id, type, tier: 1, name: names[type], unitScript: baseScript(type), instruction: baseScript(type), equipment: {}, upgrades: {}, skin: "olive", deployed: true, commands: ["radar", "gun", "drive"] };
+}
+function strength(units) {
+  return Math.round(units.reduce((n, u) => n + 100 * (1 + 0.8 * (u.tier - 1)) + Object.keys(u.equipment).length * 12, 0));
+}
+async function account(env, input) {
+  if (["units", "credits", "resources", "slots", "tier", "upgrades", "inventory", "winner", "reward"].some((k) => Object.hasOwn(input, k))) throw Error("Online units and resources are server-owned. Submit scripts or a store action only.");
+  let row = null, id = input.profile?.id, key = input.profile?.token;
+  if (id) {
+    row = await env.DB.prepare("SELECT * FROM arena_profiles WHERE id=?").bind(id).first();
+    if (!row || !key || row.token !== key) throw Error("Invalid player profile");
+  } else {
+    id = token(12);
+    key = token(24);
+  }
+  const owned = row?.owned ? JSON.parse(row.owned) : { roster: [newUnit("tank", "online-1")], credits: 0, slots: 1, gear: [], serial: 1 };
+  return { id, key, row, original: row?.owned || "", owned };
+}
+function catalog(a, level) {
+  const list = [{ id: "slot", name: "Online team slot", price: 100 + (a.owned.slots - 1) * 50 }];
+  for (const type of types) if (level >= unlock[type]) list.push({ id: "recruit:" + type, name: "Recruit " + names[type], price: 110 + types.indexOf(type) * 15 });
+  for (const slot of ["weapon", "armor", "utility"]) for (let i = 0; i < 10; i++) {
+    const id = slot + "-" + i;
+    if (!a.owned.gear.includes(id)) list.push({ id: "gear:" + id, name: slot + " " + (i + 1), price: (slot === "weapon" ? 60 : slot === "armor" ? 55 : 50) + i * (slot === "weapon" ? 18 : slot === "armor" ? 15 : 14) });
+  }
+  return list;
+}
+async function saveAccount(env, input, item = null) {
+  const a = await account(env, input), owned = a.owned, name = String(input.name || a.row?.name || "Commander").trim().slice(0, 28) || "Commander", map = ["urban", "canyon", "volcanic", "coast"].includes(input.map) ? input.map : a.row?.map || "urban";
+  const score = await env.DB.prepare("SELECT COUNT(*) AS wins FROM arena_results WHERE winner=?").bind(a.id).first(), level = 1 + Math.floor((score?.wins || 0) / 2);
+  if (input.scripts !== void 0) {
+    if (!Array.isArray(input.scripts) || input.scripts.length > owned.roster.length) throw Error("Only owned units can receive scripts");
+    const seen = /* @__PURE__ */ new Set();
+    for (const edit of input.scripts) {
+      if (!edit || Object.keys(edit).some((k) => !["id", "unitScript", "name", "deployed"].includes(k))) throw Error("Only scripts, names and deployment can be edited");
+      const unit = owned.roster.find((u) => u.id === edit.id);
+      if (!unit || seen.has(edit.id)) throw Error("Unit not owned");
+      seen.add(edit.id);
+      unit.unitScript = validatePython(edit.unitScript);
+      unit.instruction = unit.unitScript;
+      if (typeof edit.name === "string") unit.name = edit.name.slice(0, 28);
+      if (typeof edit.deployed === "boolean") unit.deployed = edit.deployed;
+    }
+  }
+  if (input.squadScript !== void 0) {
+    if (typeof input.squadScript !== "string") throw Error("Invalid squad script");
+    owned.squadScript = input.squadScript ? validatePython(input.squadScript) : "";
+  }
+  if (item) {
+    if (typeof item !== "string") throw Error("Invalid store item");
+    if (item.startsWith("equip:")) {
+      const [, id, gear] = item.split(":"), unit = owned.roster.find((u) => u.id === id);
+      if (!unit || !owned.gear.includes(gear)) throw Error("Unit or equipment not owned");
+      unit.equipment[gear.split("-")[0]] = gear;
+    } else if (item.startsWith("combine:")) {
+      const [, type, star] = item.split(":"), tier = Number(star), matches = owned.roster.filter((u) => u.type === type && u.tier === tier);
+      if (matches.length < 3 || tier >= 3 || tier < 1) throw Error("Need three owned matching units");
+      const keep = matches[0];
+      keep.tier++;
+      keep.commands = ["radar", "gun", "drive", "cover", "duck", ...keep.tier === 3 ? ["perch", "retreat"] : []];
+      owned.roster = owned.roster.filter((u) => !matches.slice(1, 3).includes(u));
+    } else {
+      const offer = catalog(a, level).find((o) => o.id === item);
+      if (!offer) throw Error("Item locked or already owned");
+      if (owned.credits < offer.price) throw Error("Not enough server credits");
+      if (item === "slot" && owned.slots >= 15) throw Error("Maximum slots reached");
+      if (item.startsWith("recruit:") && owned.roster.length >= owned.slots) throw Error("Buy an online team slot first");
+      owned.credits -= offer.price;
+      if (item === "slot") owned.slots++;
+      else if (item.startsWith("recruit:")) owned.roster.push(newUnit(item.slice(8), "online-" + ++owned.serial));
+      else owned.gear.push(item.slice(5));
+    }
+  }
+  const units = owned.roster.filter((u) => u.deployed !== false && (u.type !== "boat" || map === "coast")).map((u) => ({ ...u, squadScript: u.unitScript, squadPython: owned.squadScript || "" }));
+  if (!units.length) throw Error("Deploy at least one compatible owned unit");
+  const power = strength(units), serialized = JSON.stringify(owned), now = Date.now();
+  if (a.row) {
+    const saved = await env.DB.prepare("UPDATE arena_profiles SET name=?,units=?,map=?,power=?,updated=?,owned=? WHERE id=? AND COALESCE(owned,'')=?").bind(name, JSON.stringify(units), map, power, now, serialized, a.id, a.original).run();
+    if (!saved.meta.changes) throw Error("Account changed during request; reload and retry");
+  } else await env.DB.prepare("INSERT INTO arena_profiles (id,token,name,units,map,power,updated,owned) VALUES (?,?,?,?,?,?,?,?)").bind(a.id, a.key, name, JSON.stringify(units), map, power, now, serialized).run();
+  return { profile: { id: a.id, token: a.key }, account: owned, catalog: catalog(a, level), level, power, units, map };
+}
+async function activeMatch(env, id) {
+  return env.DB.prepare("SELECT code FROM arena_matches WHERE (attacker=? OR defender=?) AND expires>? AND (state IS NULL OR json_extract(state,'$.mode')='running') LIMIT 1").bind(id, id, Date.now()).first();
+}
+async function award(env, row, state) {
+  if (!row.attacker || !row.defender) return;
+  const winner = state.mode === "won" ? row.attacker : row.defender, loser = state.mode === "won" ? row.defender : row.attacker;
+  await env.DB.prepare("INSERT OR IGNORE INTO arena_results (code,winner,loser,completed,paid) VALUES (?,?,?,?,0)").bind(row.code, winner, loser, Date.now()).run();
+  await env.DB.batch([env.DB.prepare("UPDATE arena_profiles SET owned=json_set(owned,'$.credits',json_extract(owned,'$.credits')+60) WHERE id=? AND owned IS NOT NULL AND EXISTS(SELECT 1 FROM arena_results WHERE code=? AND paid=0)").bind(winner, row.code), env.DB.prepare("UPDATE arena_profiles SET owned=json_set(owned,'$.credits',json_extract(owned,'$.credits')+15) WHERE id=? AND owned IS NOT NULL AND EXISTS(SELECT 1 FROM arena_results WHERE code=? AND paid=0)").bind(loser, row.code), env.DB.prepare("UPDATE arena_results SET paid=1 WHERE code=? AND paid=0").bind(row.code)]);
+}
 var index_default = { async fetch(request, env) {
   const url = new URL(request.url);
   try {
-    if (url.pathname === "/api/status") return json({ available: false, model: "Use the Android phone model or local USB bridge", location: "No hosted model" });
-    if (url.pathname === "/api/plan" || url.pathname === "/api/squad-chat") return json({ error: "Models run on your phone or computer. Open the installed Android app to compile." }, 503);
+    if (url.pathname === "/api/status") return json({ available: false, model: "External Python script authoring", location: "No in-game model" });
+    if (url.pathname === "/api/plan" || url.pathname === "/api/squad-chat") return json({ error: "Paste Python scripts generated by your own LLM." }, 410);
     if (!url.pathname.startsWith("/api/matches")) return env.ASSETS.fetch(request);
     if (!env.DB) return json({ error: "Match database unavailable" }, 503);
     if (request.method === "GET" && url.pathname === "/api/matches/leaderboard") {
-      const result = await env.DB.prepare("SELECT p.name,p.power,(SELECT COUNT(*) FROM arena_results WHERE winner=p.id) AS wins,(SELECT COUNT(*) FROM arena_results WHERE loser=p.id) AS losses FROM arena_profiles p ORDER BY wins DESC,losses ASC,p.updated DESC LIMIT 30").all();
+      const result = await env.DB.prepare("SELECT p.name,p.power,(SELECT COUNT(*) FROM arena_results WHERE winner=p.id) AS wins,(SELECT COUNT(*) FROM arena_results WHERE loser=p.id) AS losses FROM arena_profiles p WHERE p.owned IS NOT NULL ORDER BY wins DESC,losses ASC,p.updated DESC LIMIT 30").all();
       return json({ players: result.results });
     }
     if (request.method === "POST") {
-      if (Number(request.headers.get("content-length")) > 12e4) return json({ error: "Squad too large" }, 413);
       const raw = await request.text();
-      if (raw.length > 12e4) return json({ error: "Squad too large" }, 413);
+      if (raw.length > 65e3) return json({ error: "Request too large" }, 413);
       const input = JSON.parse(raw);
-      if (url.pathname === "/api/matches/profile" || url.pathname === "/api/matches/random") {
-        const defense = await saveDefense(env, input);
-        if (url.pathname.endsWith("/profile")) return json({ profile: defense.profile, power: defense.power });
-        const candidates = await env.DB.prepare("SELECT id,units,map,power FROM arena_profiles WHERE id<>? AND map=? AND power BETWEEN ? AND ? ORDER BY ABS(power-?) LIMIT 20").bind(defense.profile.id, defense.map, defense.power * 0.65, defense.power * 1.35, defense.power).all();
-        if (!candidates.results.length) return json({ profile: defense.profile, status: "empty" });
-        const opponent = candidates.results[crypto.getRandomValues(new Uint32Array(1))[0] % candidates.results.length], code = randomToken(3).toUpperCase(), token = randomToken(24), seed = crypto.getRandomValues(new Uint32Array(1))[0], a = squad(input.units, "a-"), b = squad(JSON.parse(opponent.units), "b-"), engine = createEngine(a, b, defense.map, seed), now = Date.now();
-        await env.DB.prepare("INSERT INTO arena_matches (code,token_a,token_b,units_a,units_b,map,seed,state,updated,expires,revision,attacker,defender) VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?)").bind(code, token, randomToken(24), JSON.stringify(a), JSON.stringify(b), defense.map, seed, JSON.stringify(engine.state()), now, now + 9e5, defense.profile.id, opponent.id).run();
-        return json({ profile: defense.profile, code, token, status: "running", seat: 0 });
+      if (url.pathname === "/api/matches/cancel") {
+        const a = await account(env, input);
+        await env.DB.prepare("UPDATE arena_matches SET expires=? WHERE code=? AND attacker=? AND token_b IS NULL").bind(Date.now(), input.code, a.id).run();
+        return json({ status: "cancelled" });
       }
-      if (url.pathname === "/api/matches/create") {
-        const code = randomToken(3).toUpperCase(), token = randomToken(24), seed = crypto.getRandomValues(new Uint32Array(1))[0], map = ["urban", "canyon", "volcanic", "coast"].includes(input.map) ? input.map : "urban", units = squad(input.units, "a-"), now = Date.now();
-        await env.DB.prepare("INSERT INTO arena_matches (code,token_a,units_a,map,seed,updated,expires,revision) VALUES (?,?,?,?,?,?,?,0)").bind(code, token, JSON.stringify(units), map, seed, now, now + 9e5).run();
-        return json({ code, token, status: "waiting", seat: 0 });
+      if (url.pathname === "/api/matches/profile" || url.pathname === "/api/matches/shop") {
+        const data = await saveAccount(env, input, url.pathname.endsWith("/shop") ? input.item : null);
+        return json(data);
+      }
+      if (url.pathname === "/api/matches/random" || url.pathname === "/api/matches/create") {
+        const defense = await saveAccount(env, input);
+        if (await activeMatch(env, defense.profile.id)) throw Error("An online match is already active. Reconnect or cancel the waiting invite.");
+        const code = token(3).toUpperCase(), session = token(24), seed = crypto.getRandomValues(new Uint32Array(1))[0], now = Date.now();
+        if (url.pathname.endsWith("/create")) {
+          await env.DB.prepare("INSERT INTO arena_matches (code,token_a,units_a,map,seed,updated,expires,revision,attacker) VALUES (?,?,?,?,?,?,?,0,?)").bind(code, session, JSON.stringify(defense.units), defense.map, seed, now, now + 9e5, defense.profile.id).run();
+          return json({ ...defense, code, token: session, status: "waiting", seat: 0 });
+        }
+        const candidates = await env.DB.prepare("SELECT id,units,map,power FROM arena_profiles WHERE id<>? AND owned IS NOT NULL AND map=? AND power BETWEEN ? AND ? ORDER BY ABS(power-?) LIMIT 20").bind(defense.profile.id, defense.map, defense.power * 0.65, defense.power * 1.35, defense.power).all();
+        if (!candidates.results.length) return json({ ...defense, status: "empty" });
+        const opponent = candidates.results[crypto.getRandomValues(new Uint32Array(1))[0] % candidates.results.length], b = JSON.parse(opponent.units).map((u, i) => ({ ...u, id: "defender-" + i })), engine = createEngine(defense.units, b, defense.map, seed);
+        await env.DB.prepare("INSERT INTO arena_matches (code,token_a,token_b,units_a,units_b,map,seed,state,updated,expires,revision,attacker,defender) VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?)").bind(code, session, token(24), JSON.stringify(defense.units), JSON.stringify(b), defense.map, seed, JSON.stringify(engine.state()), now, now + 9e5, defense.profile.id, opponent.id).run();
+        return json({ ...defense, code, token: session, status: "running", seat: 0 });
       }
       if (url.pathname === "/api/matches/join") {
         const code = String(input.code || "").toUpperCase(), row = await env.DB.prepare("SELECT * FROM arena_matches WHERE code=? AND expires>?").bind(code, Date.now()).first();
         if (!row) throw Error("Match not found or expired");
         if (row.token_b) throw Error("Match already has two players");
-        const token = randomToken(24), b = squad(input.units, "b-"), a = JSON.parse(row.units_a), engine = createEngine(a, b, row.map, row.seed), state = JSON.stringify(engine.state());
-        const updated = await env.DB.prepare("UPDATE arena_matches SET token_b=?,units_b=?,state=?,updated=?,revision=revision+1 WHERE code=? AND token_b IS NULL").bind(token, JSON.stringify(b), state, Date.now(), code).run();
-        if (!updated.meta.changes) throw Error("Match already joined");
-        return json({ code, token, status: "running", seat: 1 });
+        const defense = await saveAccount(env, { ...input, map: row.map });
+        if (row.attacker === defense.profile.id) throw Error("Cannot fight your own profile");
+        if (await activeMatch(env, defense.profile.id)) throw Error("An online match is already active");
+        const session = token(24), b = defense.units.map((u, i) => ({ ...u, id: "defender-" + i })), engine = createEngine(JSON.parse(row.units_a), b, row.map, row.seed), result = await env.DB.prepare("UPDATE arena_matches SET token_b=?,units_b=?,state=?,updated=?,revision=revision+1,defender=? WHERE code=? AND token_b IS NULL").bind(session, JSON.stringify(b), JSON.stringify(engine.state()), Date.now(), defense.profile.id, code).run();
+        if (!result.meta.changes) throw Error("Match already joined");
+        return json({ ...defense, code, token: session, status: "running", seat: 1 });
       }
     }
     if (request.method === "GET") {
-      const code = url.searchParams.get("code"), token = request.headers.get("x-match-token");
+      const code = url.searchParams.get("code"), key = request.headers.get("x-match-token");
       let row = await env.DB.prepare("SELECT * FROM arena_matches WHERE code=? AND expires>?").bind(code, Date.now()).first();
       if (!row) throw Error("Match not found or expired");
-      const seat = token === row.token_a ? 0 : token === row.token_b ? 1 : -1;
-      if (seat < 0 || !token) return json({ error: "Invalid session token" }, 403);
+      const seat = key === row.token_a ? 0 : key === row.token_b ? 1 : -1;
+      if (seat < 0 || !key) return json({ error: "Invalid session token" }, 403);
       if (!row.token_b) return json({ code, status: "waiting", seat });
       let state = JSON.parse(row.state);
       if (state.mode === "running") {
-        const now = Date.now(), elapsed = Math.min(2, (now - row.updated) / 1e3), engine = createEngine(JSON.parse(row.units_a), JSON.parse(row.units_b), row.map, row.seed, state);
-        engine.tick(elapsed);
+        const now = Date.now(), engine = createEngine(JSON.parse(row.units_a), JSON.parse(row.units_b), row.map, row.seed, state);
+        engine.tick(Math.min(2, (now - row.updated) / 1e3));
         state = engine.state();
-        const next = await env.DB.prepare("UPDATE arena_matches SET state=?,updated=?,revision=revision+1 WHERE code=? AND revision=?").bind(JSON.stringify(state), now, code, row.revision).run();
-        if (!next.meta.changes) {
+        const saved = await env.DB.prepare("UPDATE arena_matches SET state=?,updated=?,revision=revision+1 WHERE code=? AND revision=?").bind(JSON.stringify(state), now, code, row.revision).run();
+        if (!saved.meta.changes) {
           row = await env.DB.prepare("SELECT * FROM arena_matches WHERE code=?").bind(code).first();
           state = JSON.parse(row.state);
         }
       }
-      if (state.mode !== "running" && row.attacker && row.defender) await env.DB.prepare("INSERT OR IGNORE INTO arena_results (code,winner,loser,completed) VALUES (?,?,?,?)").bind(code, state.mode === "won" ? row.attacker : row.defender, state.mode === "won" ? row.defender : row.attacker, Date.now()).run();
+      if (state.mode !== "running") await award(env, row, state);
       return json({ code, seat, seed: row.seed, map: row.map, status: state.mode === "running" ? "running" : "finished", winner: state.mode === "won" ? 0 : 1, ...state });
     }
     return json({ error: "Unknown match action" }, 400);

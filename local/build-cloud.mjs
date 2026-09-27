@@ -1,9 +1,10 @@
 import fs from 'node:fs';
 import {build} from 'esbuild';
+import vm from 'node:vm';
 fs.mkdirSync('dist/server',{recursive:true});
 const renderer=await build({entryPoints:['client/arena-3d.js'],bundle:true,format:'iife',platform:'browser',minify:true,write:false});
 let page=fs.readFileSync('dist/play.html','utf8').replace(/\n<!-- WEBGL_RENDERER -->[\s\S]*?<!-- END_WEBGL_RENDERER -->/,'');
-const language=fs.readFileSync('client/squad-language.js','utf8')+'\n'+fs.readFileSync('client/script-workshop.js','utf8');
+const language=fs.readFileSync('client/squad-language.js','utf8')+'\n'+fs.readFileSync('client/python-parser.js','utf8')+'\n'+fs.readFileSync('client/python-runtime.js','utf8')+'\n'+fs.readFileSync('client/script-workshop.js','utf8');
 page=page.replace(/\/\/ SQUAD_LANGUAGE_START[\s\S]*?\/\/ SQUAD_LANGUAGE_END\n?/,'');
 page=page.replace('const initial=selectedUnit();',()=> '// SQUAD_LANGUAGE_START\n'+language+'\n// SQUAD_LANGUAGE_END\nconst initial=selectedUnit();');
 page=page.replace('</body>', ()=> '\n<!-- WEBGL_RENDERER -->\n<script>'+renderer.outputFiles[0].text.replace(/<\/script/gi,'<\\/script')+'</script>\n<!-- END_WEBGL_RENDERER -->\n</body>');
@@ -19,6 +20,11 @@ return{tick(seconds){const steps=Math.max(0,Math.min(120,Math.floor(seconds*60))
 }
 `;
 fs.writeFileSync('dist/server/engine.mjs',prologue+source+epilogue.replace('t.angle=Math.PI;t.heading=Math.PI;','t.homeX=t.x;t.homeY=t.y;t.angle=Math.PI;t.heading=Math.PI;'));
+const baseCatalog=vm.runInNewContext(fs.readFileSync('client/squad-language.js','utf8').match(/const squadFunctions=([\s\S]*?)\.map\(/)[1]);
+const pythonRuntime=fs.readFileSync('client/python-runtime.js','utf8'),extraCatalog=vm.runInNewContext(pythonRuntime.match(/const extraPythonActions=([\s\S]*?);/)[1]);
+const readSet=name=>[...vm.runInNewContext(pythonRuntime.match(new RegExp('const '+name+'=(new Set\\([\\s\\S]*?\\));'))[1])];
+const methods=[...readSet('pythonCore'),...baseCatalog.concat(extraCatalog).map(row=>row[1].replaceAll('-','_'))];
+fs.writeFileSync('cloud/python-policy.mjs',fs.readFileSync('client/python-parser.js','utf8')+'\nconst methods=new Set('+JSON.stringify(methods)+'),sensors=new Set('+JSON.stringify(readSet('pythonSensors'))+'),queries=new Set('+JSON.stringify(readSet('pythonQueries'))+');\nexport function validatePython(text){const result=PythonUnit.compile(text,methods,sensors,queries);if(result.errors.length)throw Error(result.errors.join(" · "));return text}\n');
 fs.copyFileSync('cloud/worker.mjs','dist/server/index.js');
 const bundled=await build({entryPoints:['dist/server/index.js'],bundle:true,format:'esm',platform:'browser',write:false});
 fs.writeFileSync('dist/server/index.js',bundled.outputFiles[0].contents);

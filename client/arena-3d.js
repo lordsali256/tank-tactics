@@ -3,6 +3,7 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 // All geometry and materials ship in the APK. No external assets are fetched.
 const world=window.arenaWorld;
 const old=document.getElementById('arena'),host=document.createElement('div');
+host.className='battle-stage';
 host.style.cssText='position:relative;width:100%;aspect-ratio:920/560;background:#111b22;overflow:hidden';old.before(host);
 try {
  const renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
@@ -13,7 +14,7 @@ try {
  const scene=new T.Scene();scene.background=new T.Color('#91a6b5');scene.fog=new T.Fog('#91a6b5',1800,5500);
  const camera=new T.PerspectiveCamera(48,1,2,7000);
  scene.add(new T.HemisphereLight(0xd9f0ff,0x424332,2.5));
- const sun=new T.DirectionalLight(0xffe4b3,3.1);sun.position.set(600,1500,500);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-1800;sun.shadow.camera.right=1800;sun.shadow.camera.top=1800;sun.shadow.camera.bottom=-1800;sun.shadow.camera.far=4000;sun.shadow.bias=-.0005;scene.add(sun);
+ const sun=new T.DirectionalLight(0xffe4b3,3.1);sun.position.set(600,1500,500);sun.castShadow=true;sun.shadow.mapSize.set(innerWidth<=600?1024:2048,innerWidth<=600?1024:2048);sun.shadow.camera.left=-1800;sun.shadow.camera.right=1800;sun.shadow.camera.top=1800;sun.shadow.camera.bottom=-1800;sun.shadow.camera.far=4000;sun.shadow.bias=-.0005;scene.add(sun);
  const material=(color,metalness=.1)=>new T.MeshStandardMaterial({color,roughness:.72,metalness});
  const mats={track:material('#20282b'),steel:material('#708387',.6),glass:material('#51c8e7',.4),road:material('#303b3c'),roof:material('#45555a'),rubble:material('#737976'),health:material('#44ee99'),ammo:material('#ffaa45'),overdrive:material('#ac74ff'),shield:material('#47caff')};
  function box(group,x,y,z,w,h,d,mat){const mesh=new T.Mesh(new T.BoxGeometry(w,h,d),mat);mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;group.add(mesh);return mesh}
@@ -23,16 +24,21 @@ try {
  let map=null,rev=-1;const structures=new Map(),units=new Map(),drops=new Map();
  const clear=g=>{while(g.children.length){const child=g.children[0];g.remove(child);child.traverse(o=>o.geometry?.dispose());}};
  function landscape(w){clear(groundGroup);const turf=material(w.map==='volcanic'?'#4a403a':w.map==='canyon'?'#81705b':'#65705a');box(groundGroup,w.W/2,-8,w.H/2,w.W+150,12,w.H+150,turf);box(groundGroup,w.W/2,0,w.H*.45,w.W,2,160,mats.road);
-  for(let i=0;i<12;i++)box(groundGroup,210+i*205,1,w.H/2,45,2,w.H,mats.road);
-  for(let i=0;i<7;i++)box(groundGroup,w.W/2,1,45+i*235,w.W,2,35,mats.road);
+  if(w.map==='urban')for(let i=0;i<12;i++)box(groundGroup,210+i*205,1,w.H/2,45,2,w.H,mats.road);
+  if(w.map==='urban')for(let i=0;i<7;i++)box(groundGroup,w.W/2,1,45+i*235,w.W,2,35,mats.road);
   for(let i=0;i<40;i++)box(groundGroup,30+i*75,3,w.H*.45,28,1,3,material('#a5a88c'));
-  if(w.map==='coast')box(groundGroup,w.W/2,2,w.H*.8,w.W,4,w.H*.4,material('#276c8a',.4));
+  if(w.map==='coast'){box(groundGroup,w.W/2,2,w.H*.8,w.W,4,w.H*.4,material('#276c8a',.4));for(let i=0;i<7;i++){box(groundGroup,260+i*380,7,w.H*.65,85,14,w.H*.23,mats.roof);box(groundGroup,280+i*380,8,w.H*.87,180,16,65,turf)}}
+  if(w.map==='canyon')for(let i=0;i<9;i++){const ridge=new T.Mesh(new T.ConeGeometry(120+i%3*35,220,5),turf);ridge.position.set(140+i*340,70,i%2?w.H*.9:w.H*.08);groundGroup.add(ridge)}
+  if(w.map==='volcanic')for(let i=0;i<5;i++){const lava=new T.Mesh(new T.CylinderGeometry(70+i*8,80,5,16),material('#d75421'));lava.scale.z=.6;lava.position.set(w.W*.5+Math.sin(i)*280,2,w.H*.22+Math.cos(i)*180);groundGroup.add(lava)}
   if(w.map==='volcanic'){const crater=new T.Mesh(new T.CylinderGeometry(95,110,8,24),material('#ed6836'));crater.position.set(w.W*.5,5,w.H*.22);groundGroup.add(crater)}
  }
  const walls=['#b09c85','#819393','#b0aaa0'].map(c=>material(c));
- function building(b){const g=new T.Group();g.position.set(b.x,0,b.y);const style=b.style??structures.size%4,wall=walls[style%3];box(g,b.w/2,b.height/2,b.h/2,b.w,b.height,b.h,wall);box(g,b.w/2,b.height+3,b.h/2,b.w+5,6,b.h+5,mats.roof);if(style===1){const roof=box(g,b.w/2,b.height+12,b.h/2,b.w+5,14,b.h+5,mats.roof);roof.rotation.z=.08}else if(style===2){box(g,b.w*.3,b.height+18,b.h*.4,b.w*.4,30,b.h*.5,wall);box(g,b.w*.3,b.height+35,b.h*.4,b.w*.45,5,b.h*.55,mats.roof)}else if(style===3){for(const x of [b.w*.25,b.w*.75]){const tank=new T.Mesh(new T.CylinderGeometry(12,12,28,10),mats.steel);tank.position.set(x,b.height+14,b.h*.6);g.add(tank)}box(g,b.w*.8,b.height+35,b.h*.25,8,70,8,mats.steel)}
-  for(let y=14;y<b.height-12;y+=24)for(let x=12;x<b.w-9;x+=20){box(g,x,y,-1,9,12,2,mats.glass);box(g,x,y,b.h+1,9,12,2,mats.glass)}
-  box(g,b.w*.7,b.height+10,b.h*.6,20,14,22,mats.steel);
+ function building(b){const g=new T.Group();g.position.set(b.x,0,b.y);const style=b.style??0,wall=walls[style%3],kind=b.kind||'apartment',cx=b.w/2,cz=b.h/2;
+ if(kind==='mesa'){const rock=new T.Mesh(new T.CylinderGeometry(b.w*.4,b.w*.55,b.height,6),walls[0]);rock.scale.z=b.h/b.w;rock.position.set(cx,b.height/2,cz);g.add(rock);box(g,cx,b.height+4,cz,b.w*.55,8,b.h*.55,mats.rubble)}
+ else if(kind==='dome'){const dome=new T.Mesh(new T.SphereGeometry(Math.min(b.w,b.h)*.48,14,8,0,Math.PI*2,0,Math.PI/2),wall);dome.position.set(cx,8,cz);g.add(dome);box(g,cx,7,cz,b.w,14,b.h,mats.steel);box(g,cx,18,-2,25,30,12,mats.glass)}
+ else if(kind==='silo'||kind==='lighthouse'){const tower=new T.Mesh(new T.CylinderGeometry(b.w*.24,b.w*.3,b.height,12),wall);tower.position.set(cx,b.height/2,cz);g.add(tower);box(g,cx,b.height+8,cz,b.w*.55,16,b.h*.55,kind==='lighthouse'?mats.glass:mats.roof);box(g,cx,5,cz,b.w,10,b.h,mats.roof)}
+ else if(kind==='crane'){for(const x of [b.w*.2,b.w*.8])box(g,x,b.height/2,cz,12,b.height,12,mats.steel);box(g,cx,b.height,cz,b.w,12,14,mats.ammo);box(g,cx,b.height*.4,cz,8,b.height*.8,8,mats.steel);box(g,cx,10,cz,b.w*.5,20,b.h*.5,mats.roof)}
+ else {const height=kind==='bunker'?30:kind==='warehouse'?45:b.height;box(g,cx,height/2,cz,b.w,height,b.h,wall);box(g,cx,height+3,cz,b.w+5,6,b.h+5,mats.roof);if(kind==='warehouse'||kind==='church'){const roof=new T.Mesh(new T.CylinderGeometry(b.h*.55,b.h*.55,b.w+6,3),mats.roof);roof.rotation.z=Math.PI/2;roof.position.set(cx,height+12,cz);g.add(roof);box(g,cx,18,-2,b.w*.45,32,4,mats.steel)}if(kind==='church'){box(g,b.w*.2,height+30,cz,24,60,24,wall);box(g,b.w*.2,height+70,cz,4,25,4,mats.steel);box(g,b.w*.2,height+74,cz,18,4,4,mats.steel)}if(kind==='apartment')for(let y=14;y<height-12;y+=24)for(let x=12;x<b.w-9;x+=20){box(g,x,y,-1,9,12,2,mats.glass);box(g,x,y,b.h+1,9,12,2,mats.glass)}if(kind==='bunker')box(g,cx,18,-2,b.w*.65,5,3,mats.track)}
   const batches=new Map();for(const mesh of g.children){mesh.updateMatrix();if(!batches.has(mesh.material))batches.set(mesh.material,[]);batches.get(mesh.material).push(mesh.geometry.clone().applyMatrix4(mesh.matrix))}clear(g);for(const [mat,geometries] of batches){const mesh=new T.Mesh(mergeGeometries(geometries),mat);mesh.castShadow=mat!==mats.glass;mesh.receiveShadow=true;g.add(mesh);for(const geometry of geometries)geometry.dispose()}
   scene.add(g);return {g,destroyed:false,b};
  }
@@ -57,9 +63,9 @@ try {
   const ring=new T.Mesh(new T.RingGeometry(t.r+7,t.r+10,28),new T.MeshBasicMaterial({color:friendly?0xc7ff76:0xff9477,side:T.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.position.y=2;g.add(ring);scene.add(g);return {g,body,turret,hp,fill,ring,type:t.type,team:t.team};
  }
  const fx=new T.Group();scene.add(fx);const shotGeometry=new T.SphereGeometry(3,6,4);const shotMats=[new T.MeshBasicMaterial({color:0xfff0a0}),new T.MeshBasicMaterial({color:0xff9057})];
- const ui=document.createElement('div');ui.style.cssText='position:absolute;top:8px;left:8px;right:8px;display:flex;gap:5px;align-items:center;pointer-events:none';host.append(ui);
+ const ui=document.createElement('div');ui.className='camera-controls';ui.style.cssText='position:absolute;top:8px;left:8px;right:8px;display:flex;gap:5px;align-items:center;pointer-events:none';host.append(ui);
  function button(label,fn){const b=document.createElement('button');b.className='tiny';b.textContent=label;b.style.pointerEvents='auto';b.onclick=fn;ui.append(b);return b}
- let overview=false,yaw=.7,zoom=680,drag=null,pan={x:0,z:0};button('Follow squad',()=>{overview=false;pan={x:0,z:0}});button('Whole map',()=>overview=true);button('−',()=>zoom=Math.min(1800,zoom*1.25));button('+',()=>zoom=Math.max(220,zoom/1.25));const label=document.createElement('span');label.style.cssText='font:10px system-ui;color:white;background:#17251bcc;padding:5px;border-radius:6px';ui.append(label);
+ let overview=false,yaw=.7,zoom=680,drag=null,pan={x:0,z:0};button('Follow',()=>{overview=false;pan={x:0,z:0}});button('Map',()=>overview=true);button('−',()=>zoom=Math.min(1800,zoom*1.25));button('+',()=>zoom=Math.max(220,zoom/1.25));const label=document.createElement('span');label.style.cssText='font:10px system-ui;color:white;background:#17251bcc;padding:5px;border-radius:6px';ui.append(label);
  const mini=document.createElement('canvas');mini.width=180;mini.height=110;mini.style.cssText='position:absolute;right:8px;bottom:8px;width:120px;height:74px;border:1px solid #9ba982;border-radius:5px;background:#192722;cursor:pointer';mini.setAttribute('aria-label','Battlefield minimap; tap to move camera');host.append(mini);const mc=mini.getContext('2d');
  mini.onclick=e=>{const w=world(),r=mini.getBoundingClientRect();pan={x:(e.clientX-r.left)/r.width*w.W,z:(e.clientY-r.top)/r.height*w.H};overview=false;manual=true};let manual=false;
  ui.children[0].addEventListener('click',()=>manual=false);
