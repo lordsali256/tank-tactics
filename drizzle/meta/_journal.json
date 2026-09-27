@@ -22,6 +22,13 @@
       "when": 1790508025688,
       "tag": "0002_open_infant_terrible",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1790527224183,
+      "tag": "0003_battle_points",
+      "breakpoints": true
     }
   ]
 }

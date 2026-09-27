@@ -18,6 +18,6 @@ const rewarded=(await api('/api/matches/profile','POST',{profile:a.profile})).bo
 const bought=(await api('/api/matches/shop','POST',{profile:a.profile,item:'gear:weapon-0'})).body;assert.equal(bought.account.credits,0);assert.deepEqual(bought.account.gear,['weapon-0']);
 assert.equal((await api('/api/matches/shop','POST',{profile:a.profile,item:'equip:online-1:armor-0'})).status,400);
 const equipped=(await api('/api/matches/shop','POST',{profile:a.profile,item:'equip:online-1:weapon-0'})).body;assert.equal(equipped.account.roster[0].equipment.weapon,'weapon-0');
-const board=(await api('/api/matches/leaderboard')).body;assert.equal(board.players[0].wins,1);assert.ok(!JSON.stringify(board).includes(a.profile.token));
+const board=(await api('/api/matches/leaderboard')).body;assert.equal(board.players[0].wins,1);assert.equal(board.players[0].points,110);assert.equal(board.players[1].points,30);assert.ok(!JSON.stringify(board).includes(a.profile.token));assert.equal((await api('/api/matches/profile','POST',{profile:a.profile,points:99999})).status,400);assert.equal((await api('/api/matches/leaderboard')).body.players[0].points,110);
 assert.equal((await api('/api/matches/random','POST',{profile:a.profile})).body.status,'running');
 console.log('Server-owned units/resources, Python validation, token access, authoritative matches, idempotent payouts, owned equipment and leaderboard passed.');

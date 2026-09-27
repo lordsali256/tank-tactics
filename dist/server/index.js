@@ -1942,6 +1942,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
         $("resultText").textContent = "Server confirmed result. Online win: 60 credits; loss: 15 credits. Open the protected online armory to refresh your balance.";
         onlineSession = null;
         localStorage.removeItem("tank-match-v1");
+        showOnlineBattleResult(onlineWin, data);
         return;
       }
       onlinePoll = setTimeout(pollMatch, 150);
@@ -2326,6 +2327,12 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     $("baseDialog").showModal();
   };
   $("closeBase").onclick = () => $("baseDialog").close();
+  function battlePoints2(win, units, team = "player") {
+    const defeated = units.filter((u) => u.team !== team && u.hp <= 0).length;
+    const surviving = units.filter((u) => u.team === team && u.hp > 0).length;
+    const outcome = win ? 100 : 20, eliminations = defeated * 25, survival = surviving * 10;
+    return { total: outcome + eliminations + survival, outcome, eliminations, survival };
+  }
   Object.assign(unitTypes, {
     medic: { name: "Medic", role: "Heals foot troops; light pistol", hp: 85, damage: 9, speed: 82, range: 180, reload: 0.7, mag: 8, spread: 0.13, r: 12 },
     engineer: { name: "Engineer", role: "Repairs vehicles and supplies ammunition", hp: 100, damage: 11, speed: 75, range: 195, reload: 0.65, mag: 10, spread: 0.12, r: 12 },
@@ -3706,7 +3713,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       root.replaceChildren();
       for (const [i, row] of data.players.entries()) {
         const p = document.createElement("p");
-        p.textContent = i + 1 + ". " + row.name + " \xB7 " + row.wins + " wins / " + row.losses + " losses \xB7 Strength " + row.power;
+        p.textContent = i + 1 + ". " + row.name + " \xB7 " + (row.points || 0) + " points \xB7 " + row.wins + " wins / " + row.losses + " losses \xB7 Strength " + row.power;
         root.append(p);
       }
       if (!data.players.length) root.textContent = "No published defenses yet. Publish yours in Multiplayer.";
@@ -4171,7 +4178,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     return JSON.stringify({ units: roster.map((u) => ({ id: u.id, script: u.unitScript })), squad: campaign.orders });
   }
   function validateCoachDraft(data) {
-    if (!data || !Array.isArray(data.scripts) || !data.scripts.length || data.scripts.length > 15) throw Error("Coach must return one or more unit scripts.");
+    if (!data || !Array.isArray(data.scripts) || data.scripts.length > 15) throw Error("Coach must return one or more unit scripts.");
     const ids = /* @__PURE__ */ new Set();
     for (const row of data.scripts) {
       if (!roster.some((u) => u.id === row.id) || ids.has(row.id) || typeof row.script !== "string") throw Error("Coach returned an unknown or duplicate unit.");
@@ -4241,6 +4248,351 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   }
   $("applyCoachDraft").onclick = applyCoachScripts;
   $("runCoach").onclick = () => requestCoach();
+  let scriptChangeText = campaign.coachLog || "No script changes yet.", coachActivity = "";
+  $("menuButton").parentNode?.after?.($("coachMainPanel"));
+  $("coachDialog").append($("coachBriefFallback"));
+  function rankBadge(tier) {
+    const badge = document.createElement("span");
+    badge.className = "rank-stars";
+    badge.setAttribute("aria-label", tier + " stars");
+    for (let i = 0; i < tier; i++) {
+      const star = document.createElement("span");
+      star.className = "rank-star";
+      badge.append(star);
+    }
+    return badge;
+  }
+  const rankedRoster = renderRoster;
+  renderRoster = function() {
+    rankedRoster();
+    for (const [i, card] of [...$("rosterGrid").children].entries()) {
+      const detail = card.children[1];
+      if (detail && roster[i]) {
+        detail.textContent = detail.textContent.replace(/★+ · /, "");
+        detail.append(rankBadge(roster[i].tier));
+      }
+    }
+  };
+  const compactDepot = renderBase;
+  renderBase = function() {
+    compactDepot();
+    for (const [i, card] of [...$("depotUnits").children].entries()) {
+      const detail = card.children[1];
+      detail.textContent = unitTypes[roster[i].type].name + " \xB7 " + capacityFor(roster[i]) + " orders";
+      detail.append(rankBadge(roster[i].tier));
+      if (card.children[3]) card.children[3].hidden = card.children[3].disabled;
+    }
+    const pending = mode === "won" && !!levelReward && !levelReward.unit;
+    $("depotRecruitSection").hidden = !pending;
+    const choices = $("depotRecruitChoices");
+    choices.replaceChildren();
+    if (pending) for (const type of levelReward.offerTypes) {
+      const b2 = rewardButton(unitTypes[type].name, roster.length < economy.slots ? "Add to squad" : "Keep in reserve", () => chooseReward({ unitType: type, action: "add" }));
+      b2.className = "depot-recruit";
+      b2.append(rankBadge(1));
+      choices.append(b2);
+    }
+    if (pending) {
+      $("depotNextNote").textContent = "Choose your recruit, then a free upgrade.";
+      $("depotRewardNote").textContent = "Choose your recruit above to unlock the free upgrade.";
+    }
+    syncCoachUI();
+  };
+  function setScriptNote(text) {
+    scriptChangeText = text;
+    campaign.coachLog = text;
+    saveRoster();
+    syncCoachUI();
+  }
+  function syncCoachUI() {
+    if (!$("coachMainStatus")) return;
+    $("coachMainStatus").textContent = coachRequest ? "Analyzing battle \xB7 Full guide included" : coachSettings.enabled ? (coachSettings.provider === "ollama" ? "Local coach \xB7 " : "Coach \xB7 ") + coachSettings.model : "Coach off \xB7 No automatic requests";
+    $("scriptChangeNote").textContent = scriptChangeText;
+    $("depotScriptNote").textContent = scriptChangeText;
+    $("analyzeMain").textContent = coachRequest ? "Analyzing\u2026" : coachSettings.enabled ? "Analyze again" : "Set up coach";
+    $("analyzeMain").disabled = !!coachRequest || mode === "running";
+    $("runCoach").disabled = !!coachRequest || mode === "running";
+    $("applyMainDraft").hidden = !coachDraft;
+    $("applyMainDraft").disabled = mode === "running";
+    $("deploy").disabled = mode === "running" || mode === "won" || !!coachRequest;
+    $("coachStatus").textContent = coachActivity || (!coachSettings.enabled ? "Enable a model to analyze battles automatically." : "Full Python documentation is included in each request.");
+  }
+  $("analyzeMain").onclick = () => coachSettings.enabled ? requestCoach() : openCoachSettings();
+  $("configureMain").onclick = openCoachSettings;
+  $("applyMainDraft").onclick = () => applyCoachScripts();
+  function lineChanges(before, after) {
+    const a2 = before.replace(/\r/g, "").split("\n"), b2 = after.replace(/\r/g, "").split("\n");
+    if (before === after) return { added: 0, removed: 0 };
+    const prev = new Array(b2.length + 1).fill(0);
+    for (const x of a2) {
+      let diagonal = 0;
+      for (let j = 1; j <= b2.length; j++) {
+        const old = prev[j];
+        prev[j] = x === b2[j - 1] ? diagonal + 1 : Math.max(prev[j], prev[j - 1]);
+        diagonal = old;
+      }
+    }
+    const shared = prev[b2.length];
+    return { added: b2.length - shared, removed: a2.length - shared };
+  }
+  function coachChangeCounts(draft) {
+    let added = 0, removed = 0, units = 0;
+    for (const row of draft.scripts) {
+      const current = roster.find((u) => u.id === row.id)?.unitScript || "", diff = lineChanges(current, row.script);
+      added += diff.added;
+      removed += diff.removed;
+      if (diff.added || diff.removed) units++;
+    }
+    if (draft.squadScript !== void 0) {
+      const diff = lineChanges(campaign.orders || "", draft.squadScript);
+      added += diff.added;
+      removed += diff.removed;
+      if (diff.added || diff.removed) units++;
+    }
+    return { added, removed, units };
+  }
+  coachSnapshot = function(ids = null) {
+    return JSON.stringify({ units: roster.filter((u) => !ids || ids.includes(u.id)).map((u) => ({ id: u.id, script: u.unitScript })), squad: campaign.orders });
+  };
+  requestCoach = async function() {
+    if (!coachSettings.enabled) {
+      coachActivity = "Opt in to enable automatic battle analysis.";
+      syncCoachUI();
+      return;
+    }
+    if (!lastBattleReport || coachRequest || mode === "running") {
+      coachActivity = mode === "running" ? "Analysis is available after the battle." : "Play a campaign battle first.";
+      syncCoachUI();
+      return;
+    }
+    const controller = new AbortController(), generation = ++coachGeneration, ids = roster.map((u) => u.id), snapshot = coachSnapshot(ids), report = lastBattleReport;
+    coachAttemptedReport = report;
+    coachRequest = controller;
+    coachDraft = null;
+    $("applyCoachDraft").hidden = true;
+    $("coachDraftReview").hidden = true;
+    coachActivity = "Analyzing Round " + report.round + " \xB7 Sending full function documentation.";
+    $("coachMessage").textContent = coachActivity;
+    setScriptNote("Round " + report.round + " \xB7 Analyzing\u2026 scripts unchanged until validated.");
+    renderBase();
+    try {
+      const response = await fetch("/api/coach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...coachSettings, key: coachApiKey, report, units: roster.map((u) => ({ id: u.id, type: u.type, tier: u.tier, script: u.unitScript })), squadScript: campaign.orders }), signal: controller.signal }), data = await response.json();
+      if (!response.ok || data.error) throw Error(data.error || "Coach unavailable.");
+      if (generation !== coachGeneration || !coachSettings.enabled) return;
+      if (snapshot !== coachSnapshot(ids)) throw Error("Units or scripts changed during analysis. Analyze again.");
+      coachDraft = validateCoachDraft(data);
+      coachDraft.snapshot = snapshot;
+      coachDraft.snapshotIds = ids;
+      coachDraft.round = report.round;
+      const diff = coachChangeCounts(coachDraft);
+      coachActivity = "Full guide sent (" + (data.documentation?.characters || "all") + " characters). " + (data.summary || "Analysis complete.");
+      if (!diff.units) {
+        coachDraft = null;
+        setScriptNote("Round " + report.round + " \xB7 No script changes.");
+        $("applyCoachDraft").hidden = true;
+        $("coachDraftReview").hidden = true;
+      } else {
+        $("coachDraftReview").hidden = false;
+        $("applyCoachDraft").hidden = false;
+        $("coachDraftText").textContent = data.scripts.map((row) => (roster.find((u) => u.id === row.id)?.name || row.id) + "\n" + row.script).join("\n\n") + (data.squadScript !== void 0 ? "\n\nSquad script\n" + data.squadScript : "");
+        setScriptNote("Round " + report.round + " \xB7 Draft: " + diff.added + " lines added / " + diff.removed + " removed \xB7 Not applied.");
+        if (coachSettings.autoApply) applyCoachScripts();
+      }
+      $("coachMessage").textContent = coachActivity;
+    } catch (e) {
+      if (generation === coachGeneration) {
+        coachDraft = null;
+        coachActivity = e.name === "AbortError" ? "Analysis cancelled." : e.message;
+        setScriptNote("Round " + report.round + " \xB7 No script changes \xB7 " + coachActivity);
+        $("coachMessage").textContent = coachActivity;
+      }
+    } finally {
+      if (coachRequest === controller) coachRequest = null;
+      renderBase();
+      syncCoachUI();
+    }
+  };
+  applyCoachScripts = function() {
+    if (!coachDraft || mode === "running" || coachSnapshot(coachDraft.snapshotIds) !== coachDraft.snapshot) {
+      coachActivity = "Draft is stale or a battle is running. Analyze again.";
+      syncCoachUI();
+      return;
+    }
+    const draft = validateCoachDraft(coachDraft), diff = coachChangeCounts(draft), fromRound = draft.round || lastBattleReport?.round || round;
+    for (const row of draft.scripts) roster.find((u) => u.id === row.id).unitScript = row.script;
+    if (draft.squadScript !== void 0) {
+      campaign.orders = draft.squadScript;
+      squadScript = draft.squadScript;
+      $("prompt").value = squadScript;
+    }
+    saveProgram();
+    preview();
+    coachDraft = null;
+    $("applyCoachDraft").hidden = true;
+    $("coachDraftReview").hidden = true;
+    coachActivity = "Validated scripts saved for the next battle.";
+    setScriptNote(diff.units ? "Round " + fromRound + " \xB7 " + diff.added + " lines added / " + diff.removed + " removed \xB7 " + diff.units + " scripts updated." : "Round " + fromRound + " \xB7 No script changes.");
+  };
+  $("applyCoachDraft").onclick = applyCoachScripts;
+  $("runCoach").onclick = () => requestCoach();
+  const saveCoachPreferences = $("saveCoach").onclick;
+  $("saveCoach").onclick = () => {
+    saveCoachPreferences();
+    syncCoachUI();
+    if (coachSettings.enabled && lastBattleReport && coachAttemptedReport !== lastBattleReport) requestCoach();
+  };
+  $("coachProvider").onchange = () => {
+    const presets = { ollama: ["http://127.0.0.1:11434/api/chat", "qwen2.5-coder:7b"], gemini: ["https://generativelanguage.googleapis.com/v1beta", ""], openai: ["https://api.openai.com/v1/responses", ""], compatible: ["", ""] };
+    const [endpoint, model] = presets[$("coachProvider").value];
+    $("coachEndpoint").value = endpoint;
+    $("coachModel").value = model;
+    $("coachModel").placeholder = "Model ID from your provider account";
+    $("coachKey").value = "";
+  };
+  $("copyBattleBrief").onclick = async () => {
+    try {
+      const response = await fetch("/api/coach/reference"), data = await response.json();
+      if (!response.ok || !data.text) throw Error("Start the local server to copy the guide.");
+      const brief = "Build Tank Tactics restricted Python tick(unit, squad) scripts using this guide. Suggest changes supported by the report. Return each unit script separately, labelled with its unit ID.\n\n" + data.text + "\n\nBattle and current scripts:\n" + JSON.stringify({ report: lastBattleReport, units: roster.map((u) => ({ id: u.id, type: u.type, tier: u.tier, script: u.unitScript })), squadScript: campaign.orders }, null, 2);
+      $("coachBriefFallback").value = brief;
+      await navigator.clipboard.writeText(brief);
+      $("coachMessage").textContent = "Battle and full guide copied. Paste into ChatGPT, AI Studio or your preferred chatbot.";
+    } catch (e) {
+      $("coachMessage").textContent = e.message;
+      if ($("coachBriefFallback").value) {
+        $("coachBriefFallback").hidden = false;
+        $("coachBriefFallback").select?.();
+        $("coachMessage").textContent = "Copy the battle brief from the text box below.";
+      }
+    }
+  };
+  function renderBattleResult(win) {
+    $("rewardTitle").textContent = win ? "Victory" : "Defeat";
+    const intro = $("rewardDialog").querySelector?.("p");
+    if (intro) intro.textContent = win ? "Prepare your squad and choose a recruit at Field Base." : "Regroup, adjust your scripts and prepare at Field Base.";
+    const eyebrow = $("rewardDialog").querySelector?.(".eyebrow");
+    if (eyebrow) eyebrow.textContent = "BATTLE COMPLETE";
+    const root = $("rewards");
+    root.replaceChildren();
+    const report = lastBattleReport, points = campaign.lastPoints || { total: 0, outcome: 0, eliminations: 0, survival: 0 };
+    for (const text of ["Round " + (report?.round || round) + " \xB7 " + Math.round(report?.durationSeconds || elapsed) + " seconds", "+" + points.total + " points \xB7 Practice run score " + (campaign.practiceScore || 0), "Outcome " + points.outcome + " \xB7 Eliminations " + points.eliminations + " \xB7 Survivors " + points.survival, win ? "Your recruit and free upgrade are waiting at Field Base." : campaign.lives > 0 ? campaign.lives + " lives remaining." : "Run ended. Start a new run from Field Base."]) {
+      const p = document.createElement("p");
+      p.textContent = text;
+      root.append(p);
+    }
+    $("claimLevel").disabled = false;
+    $("claimLevel").textContent = "Continue to Field Base";
+  }
+  renderLevelRewards = function() {
+    renderBattleResult(true);
+  };
+  $("claimLevel").onclick = () => {
+    if (mode === "won" || mode === "lost") openFieldBase();
+  };
+  const resultFinish = finish;
+  finish = function(win) {
+    if (mode !== "running") return;
+    const practice = !replaying && !onlinePlaying;
+    resultFinish(win);
+    if (!practice) return;
+    campaign.lastPoints = battlePoints2(win, battleUnits);
+    campaign.practiceScore = (campaign.practiceScore || 0) + campaign.lastPoints.total;
+    saveRoster();
+    if (autoRestartTimer) {
+      clearTimeout(autoRestartTimer);
+      autoRestartTimer = null;
+    }
+    closeFieldBase();
+    renderBattleResult(win);
+    $("rewardDialog").showModal();
+    if (coachSettings.enabled && coachAttemptedReport !== lastBattleReport) requestCoach();
+    else if (!coachSettings.enabled) setScriptNote("Round " + round + " \xB7 No script changes (coach off).");
+    if (!win && autoRestart && !coachSettings.enabled && campaign.lives > 0) autoRestartTimer = setTimeout(() => {
+      $("rewardDialog").close();
+      closeFieldBase();
+      deploy();
+    }, 3e3);
+    syncCoachUI();
+  };
+  const clearScoreRun = resetRun;
+  resetRun = function() {
+    clearScoreRun();
+    campaign.practiceScore = 0;
+    campaign.lastPoints = null;
+    coachActivity = "";
+    coachAttemptedReport = null;
+    setScriptNote("New run \xB7 No script changes yet.");
+  };
+  $("reset").onclick = () => resetRun();
+  const actionDeploy = deploy;
+  deploy = function() {
+    if (coachRequest) {
+      coachActivity = "Wait for battle analysis before deploying.";
+      syncCoachUI();
+      return;
+    }
+    const result = actionDeploy();
+    syncCoachUI();
+    return result;
+  };
+  $("deploy").onclick = deploy;
+  const resultOpenBase = openFieldBase;
+  openFieldBase = function() {
+    resultOpenBase();
+    if (inFieldBase) $("fieldBaseScreen").scrollIntoView?.({ block: "start", behavior: "instant" });
+  };
+  $("baseButton").onclick = openFieldBase;
+  syncCoachUI();
+  const scoreHud = updateHud;
+  updateHud = function() {
+    scoreHud();
+    $("winsLabel").textContent = "Run wins: " + wins + " \xB7 Practice score " + (campaign.practiceScore || 0);
+  };
+  const deployFromDepot = $("depotDeploy").onclick;
+  $("depotDeploy").onclick = () => {
+    if (mode === "lost" && campaign.lives <= 0) {
+      resetRun();
+      openFieldBase();
+      return;
+    }
+    deployFromDepot();
+  };
+  const endRunDepot = renderBase;
+  renderBase = function() {
+    endRunDepot();
+    if (mode === "lost" && campaign.lives <= 0) {
+      $("depotDeploy").textContent = "Start new run";
+      $("depotDeploy").disabled = !!coachRequest;
+      $("depotNextNote").textContent = "Run complete \xB7 Prepare a fresh squad.";
+    }
+  };
+  let onlineResultShown = false;
+  function showOnlineBattleResult(win, data) {
+    onlineResultShown = true;
+    $("rewardTitle").textContent = win ? "Multiplayer victory" : "Multiplayer defeat";
+    const intro = $("rewardDialog").querySelector?.("p");
+    if (intro) intro.textContent = "Server-confirmed battle result.";
+    const root = $("rewards");
+    root.replaceChildren();
+    for (const text of ["+" + data.points + " leaderboard points", "Online credits: " + (win ? 60 : 15) + ". Refresh your online armory to see your balance."]) {
+      const p = document.createElement("p");
+      p.textContent = text;
+      root.append(p);
+    }
+    $("claimLevel").disabled = false;
+    $("claimLevel").textContent = "Return to battlefield";
+    $("rewardDialog").showModal();
+    syncCoachUI();
+  }
+  const campaignResultContinue = $("claimLevel").onclick;
+  $("claimLevel").onclick = () => {
+    if (onlineResultShown) {
+      onlineResultShown = false;
+      $("rewardDialog").close();
+      return;
+    }
+    campaignResultContinue();
+  };
   const initial = selectedUnit();
   selectedId = initial.id;
   commands = new Set((initial.instruction ? initial.commands : unlocked(initial)).filter((c) => unlocked(initial).includes(c)));
@@ -4566,6 +4918,14 @@ function validatePython(text) {
   return text;
 }
 
+// cloud/scoring.mjs
+function battlePoints(win, units, team = "player") {
+  const defeated = units.filter((u) => u.team !== team && u.hp <= 0).length;
+  const surviving = units.filter((u) => u.team === team && u.hp > 0).length;
+  const outcome = win ? 100 : 20, eliminations = defeated * 25, survival = surviving * 10;
+  return { total: outcome + eliminations + survival, outcome, eliminations, survival };
+}
+
 // dist/server/index.js
 var types = ["tank", "infantry", "rocket", "scout", "sniper", "medic", "artillery", "engineer", "boat", "helicopter"];
 var unlock = { tank: 1, infantry: 1, rocket: 1, scout: 2, sniper: 3, medic: 3, artillery: 4, engineer: 4, boat: 5, helicopter: 6 };
@@ -4581,7 +4941,7 @@ function strength(units) {
   return Math.round(units.reduce((n, u) => n + 100 * (1 + 0.8 * (u.tier - 1)) + Object.keys(u.equipment).length * 12, 0));
 }
 async function account(env, input) {
-  if (["units", "credits", "resources", "slots", "tier", "upgrades", "inventory", "winner", "reward"].some((k) => Object.hasOwn(input, k))) throw Error("Online units and resources are server-owned. Submit scripts or a store action only.");
+  if (["units", "credits", "resources", "slots", "tier", "upgrades", "inventory", "winner", "reward", "points", "score"].some((k) => Object.hasOwn(input, k))) throw Error("Online units and resources are server-owned. Submit scripts or a store action only.");
   let row = null, id = input.profile?.id, key = input.profile?.token;
   if (id) {
     row = await env.DB.prepare("SELECT * FROM arena_profiles WHERE id=?").bind(id).first();
@@ -4663,7 +5023,7 @@ async function activeMatch(env, id) {
 async function award(env, row, state) {
   if (!row.attacker || !row.defender) return;
   const winner = state.mode === "won" ? row.attacker : row.defender, loser = state.mode === "won" ? row.defender : row.attacker;
-  await env.DB.prepare("INSERT OR IGNORE INTO arena_results (code,winner,loser,completed,paid) VALUES (?,?,?,?,0)").bind(row.code, winner, loser, Date.now()).run();
+  await env.DB.prepare("INSERT OR IGNORE INTO arena_results (code,winner,loser,completed,paid,winner_points,loser_points) VALUES (?,?,?,?,0,?,?)").bind(row.code, winner, loser, Date.now(), battlePoints(true, state.battleUnits, state.mode === "won" ? "player" : "enemy").total, battlePoints(false, state.battleUnits, state.mode === "won" ? "enemy" : "player").total).run();
   await env.DB.batch([env.DB.prepare("UPDATE arena_profiles SET owned=json_set(owned,'$.credits',json_extract(owned,'$.credits')+60) WHERE id=? AND owned IS NOT NULL AND EXISTS(SELECT 1 FROM arena_results WHERE code=? AND paid=0)").bind(winner, row.code), env.DB.prepare("UPDATE arena_profiles SET owned=json_set(owned,'$.credits',json_extract(owned,'$.credits')+15) WHERE id=? AND owned IS NOT NULL AND EXISTS(SELECT 1 FROM arena_results WHERE code=? AND paid=0)").bind(loser, row.code), env.DB.prepare("UPDATE arena_results SET paid=1 WHERE code=? AND paid=0").bind(row.code)]);
 }
 var index_default = { async fetch(request, env) {
@@ -4674,7 +5034,7 @@ var index_default = { async fetch(request, env) {
     if (!url.pathname.startsWith("/api/matches")) return env.ASSETS.fetch(request);
     if (!env.DB) return json({ error: "Match database unavailable" }, 503);
     if (request.method === "GET" && url.pathname === "/api/matches/leaderboard") {
-      const result = await env.DB.prepare("SELECT p.name,p.power,(SELECT COUNT(*) FROM arena_results WHERE winner=p.id) AS wins,(SELECT COUNT(*) FROM arena_results WHERE loser=p.id) AS losses FROM arena_profiles p WHERE p.owned IS NOT NULL ORDER BY wins DESC,losses ASC,p.updated DESC LIMIT 30").all();
+      const result = await env.DB.prepare("SELECT p.name,p.power,COALESCE((SELECT SUM(winner_points) FROM arena_results WHERE winner=p.id),0)+COALESCE((SELECT SUM(loser_points) FROM arena_results WHERE loser=p.id),0) AS points,(SELECT COUNT(*) FROM arena_results WHERE winner=p.id) AS wins,(SELECT COUNT(*) FROM arena_results WHERE loser=p.id) AS losses FROM arena_profiles p WHERE p.owned IS NOT NULL ORDER BY points DESC,wins DESC,losses ASC,p.updated DESC LIMIT 30").all();
       return json({ players: result.results });
     }
     if (request.method === "POST") {
@@ -4735,7 +5095,7 @@ var index_default = { async fetch(request, env) {
         }
       }
       if (state.mode !== "running") await award(env, row, state);
-      return json({ code, seat, seed: row.seed, map: row.map, status: state.mode === "running" ? "running" : "finished", winner: state.mode === "won" ? 0 : 1, ...state });
+      return json({ code, seat, seed: row.seed, map: row.map, status: state.mode === "running" ? "running" : "finished", winner: state.mode === "won" ? 0 : 1, points: state.mode === "running" ? 0 : battlePoints((state.mode === "won" ? 0 : 1) === seat, state.battleUnits, seat === 0 ? "player" : "enemy").total, ...state });
     }
     return json({ error: "Unknown match action" }, 400);
   } catch (e) {

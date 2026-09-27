@@ -1,0 +1,19 @@
+services:
+  tank-tactics:
+    build: .
+    container_name: tank-tactics
+    restart: unless-stopped
+    environment:
+      TANK_PUBLIC_ORIGIN: http://192.168.1.10:8878
+      TANK_DATA_DIR: /data
+    ports:
+      - "192.168.1.10:8878:8878"
+    volumes:
+      - ./data:/data
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8878/play').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

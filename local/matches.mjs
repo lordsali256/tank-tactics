@@ -2,7 +2,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {readFileSync,mkdirSync,readdirSync} from 'node:fs';
 import path from 'node:path';
 import worker from '../dist/server/index.js';
-const root=path.join(process.env.LOCALAPPDATA,'TankTactics');mkdirSync(root,{recursive:true});
+const root=process.env.TANK_DATA_DIR||path.join(process.env.LOCALAPPDATA||process.cwd(),'TankTactics');mkdirSync(root,{recursive:true});
 const database=new DatabaseSync(path.join(root,'arena.sqlite'));
 database.exec('CREATE TABLE IF NOT EXISTS local_migrations (name TEXT PRIMARY KEY)');
 for(const name of readdirSync(new URL('../drizzle/',import.meta.url)).filter(n=>n.endsWith('.sql')).sort()){if(database.prepare('SELECT name FROM local_migrations WHERE name=?').get(name))continue;database.exec(readFileSync(new URL('../drizzle/'+name,import.meta.url),'utf8'));database.prepare('INSERT INTO local_migrations (name) VALUES (?)').run(name)}

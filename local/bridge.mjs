@@ -4,6 +4,8 @@ import {fileURLToPath} from 'node:url';
 import {matchRequest} from './matches.mjs';
 import {generateCoach} from './coach.mjs';
 const model='qwen3.5:4b', port=8878;
+const publicOrigin=process.env.TANK_PUBLIC_ORIGIN;
+const allowedOrigins=new Set([`http://127.0.0.1:${port}`,`http://localhost:${port}`,...(publicOrigin?[publicOrigin]:[])]);
 const schema={type:'object',additionalProperties:false,required:['style','preferred','cover','coverBelow','evade','retreat','retreatBelow','firePolicy','explanation'],properties:{style:{type:'string',enum:['rush','balanced','sniper']},preferred:{type:'integer',minimum:100,maximum:450},cover:{type:'boolean'},coverBelow:{type:'number',minimum:0,maximum:1},evade:{type:'boolean'},retreat:{type:'boolean'},retreatBelow:{type:'number',minimum:0,maximum:1},firePolicy:{type:'string',enum:['always','inRange','stationary']},explanation:{type:'string'}}};
 export function validatePlan(p){
  if(!p||Object.keys(schema.properties).some(k=>!Object.hasOwn(p,k)))throw Error('Incomplete model plan');
@@ -15,10 +17,11 @@ export function validatePlan(p){
 }
 const server=http.createServer(async(req,res)=>{
  const send=(code,data)=>{res.writeHead(code,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
- // Only the loopback game may use this computer's model; no public CORS or remote binding.
- if(req.headers.origin&&req.headers.origin!==`http://127.0.0.1:${port}`&&req.headers.origin!==`http://localhost:${port}`)return send(403,{error:'Open the local game to use the model.'});
+ // Browser writes must come from this game; the container publishes only the configured LAN address.
+ if(req.headers.origin&&!allowedOrigins.has(req.headers.origin))return send(403,{error:'Open this game to use its services.'});
  try{
  const pathname=new URL(req.url,'http://localhost').pathname;
+ if(pathname==='/api/coach/reference'&&req.method==='GET')return send(200,{text:await readFile(new URL('../docs/SQUADSCRIPT.md',import.meta.url),'utf8')});
  if(pathname==='/api/coach'&&req.method==='POST'){let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>160000)return send(413,{error:'Battle report too large.'})}const controller=new AbortController();res.on('close',()=>{if(!res.writableEnded)controller.abort()});return send(200,await generateCoach(JSON.parse(raw),{signal:controller.signal}));}
  if(pathname.startsWith('/api/matches'))return send(200,await matchRequest(req,new URL(req.url,'http://localhost')));
  if(pathname==='/api/status'){
@@ -41,4 +44,5 @@ const server=http.createServer(async(req,res)=>{
  const body=await readFile(fileURLToPath(new URL('../dist/'+files[pathname],import.meta.url)));res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});res.end(body);
  }catch(e){send(503,{error:e.name==='TimeoutError'?'Local model timed out.':e.message});}
 });
-server.listen(port,'127.0.0.1',()=>console.log(`Tank Tactics local test: http://127.0.0.1:${port}/play · ${model}`));
+const bindHost=process.env.TANK_BIND_HOST||'127.0.0.1';
+server.listen(port,bindHost,()=>console.log(`Tank Tactics: ${publicOrigin||`http://${bindHost}:${port}`}/play · ${model}`));
