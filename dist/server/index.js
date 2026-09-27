@@ -1319,7 +1319,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     const foe = t.target;
     if (!foe || foe.hp <= 0) {
       if (t.commands.includes("drive")) {
-        const formation = formationVector(t, null);
+        const formation = t.aiControlled ? aiMovement(t, null) : formationVector(t, null);
         t.velocity = Math.min(s.speed, t.velocity + s.acceleration * dt);
         squadMove(t, formation ? formation.mx : t.team === "player" ? 1 : -1, formation ? formation.my : Math.sin(t.phase) * 0.3, dt);
         if (t.id === selectedId && formation) updateProgramLive(formation.action);
@@ -1339,6 +1339,11 @@ function createEngine(a, b, map, initialSeed, restored = null) {
         my = point[1] - t.y;
         action = "Seeking cover";
       }
+    } else if (t.aiControlled) {
+      const motion = aiMovement(t, foe);
+      mx = motion.mx;
+      my = motion.my;
+      action = motion.action;
     } else if (formationVector(t, foe)) {
       const formation = formationVector(t, foe);
       mx = formation.mx;
@@ -1968,6 +1973,56 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     if (order.focus) return foes.sort((a2, b2) => Math.hypot(a2.x - (leader || t).x, a2.y - (leader || t).y) - Math.hypot(b2.x - (leader || t).x, b2.y - (leader || t).y))[0];
     return soloTarget(t);
   };
+  function aiMovement(t, foe) {
+    const phase = t.phase, cycle = phase % 7;
+    if (!foe) return { mx: t.team === "enemy" ? -1 : 1, my: Math.sin(phase * 0.65 + 1.2) * 0.75, action: "Patrolling an approach lane" };
+    const dx = foe.x - t.x, dy = foe.y - t.y, d = Math.hypot(dx, dy), [nx, ny] = norm(dx, dy);
+    if (!t.stats.flying && !t.stats.indirect && lineBlocked(t.x, t.y, foe.x, foe.y)) {
+      t.pathClock = (t.pathClock || 0) - 0.0167;
+      if (t.pathClock <= 0) {
+        t.pathTarget = pathStep(t, foe);
+        t.pathClock = 0.5;
+      }
+      return { mx: t.pathTarget[0] - t.x, my: t.pathTarget[1] - t.y, action: "Taking an alternate route" };
+    }
+    let mx = 0, my = 0, action = "Holding a firing position";
+    if (t.aiPattern === "helicopter" || t.aiPattern === "boat") {
+      const advance = d > 320 ? 0.65 : d < 190 ? -0.7 : 0, orbit = t.aiPattern === "helicopter" ? 1 : 0.45;
+      mx = nx * advance - ny * orbit;
+      my = ny * advance + nx * orbit;
+      action = t.aiPattern === "helicopter" ? "Orbiting the target" : "Circling for a broadside";
+    } else if (t.aiPattern === "sniper" || t.aiPattern === "artillery") {
+      const preferred = t.aiPattern === "sniper" ? 390 : 340;
+      if (d < preferred - 45) {
+        mx = -nx;
+        my = -ny;
+        action = "Repositioning to the rear";
+      } else if (d > preferred + 60) {
+        mx = nx * 0.65;
+        my = ny * 0.65;
+        action = "Advancing to firing range";
+      } else if (cycle > 5) {
+        mx = -ny * 0.8;
+        my = nx * 0.8;
+        action = "Changing firing position";
+      }
+    } else if (t.aiPattern === "infantry" || t.aiPattern === "rocket") {
+      const advance = d > 230 ? 1 : d < 135 ? -0.6 : 0, lateral = cycle < 3 ? 0.65 : -0.45;
+      if (cycle < 5.5) {
+        mx = nx * advance - ny * lateral;
+        my = ny * advance + nx * lateral;
+        action = "Moving in short attack bursts";
+      }
+    } else {
+      if (cycle < 4.8) {
+        const advance = d > 230 ? 0.85 : d < 155 ? -0.45 : 0;
+        mx = nx * advance - ny * 0.45;
+        my = ny * advance + nx * 0.45;
+        action = "Advancing along a side lane";
+      } else action = "Pausing to aim";
+    }
+    return { mx, my, action };
+  }
   const autonomousTick = squadTick;
   squadTick = function(t, dt) {
     const order = ordersFor(t);
@@ -2025,6 +2080,16 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     const t = unitSpawn(u, team, index, count);
     t.squadScript = u.squadScript || (team === "player" ? squadScript : "leader tank-1\nall focus weakest\nall follow leader");
     t.commands = unlocked(u);
+    t.aiControlled = team === "enemy";
+    if (t.aiControlled) {
+      t.phase = 2.3 + index * 1.7;
+      t.aiPattern = u.type;
+      if (round === 1 && u.type === "tank") {
+        t.hp = 120;
+        t.maxHp = 120;
+        t.stats = { ...t.stats, hp: 120, maxHealth: 120 };
+      }
+    }
     return t;
   };
   const personalPreview = preview;
