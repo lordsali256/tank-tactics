@@ -8,7 +8,7 @@ $bt=Join-Path $sdkRoot 'build-tools/36.0.0'
 $platform=Join-Path $sdkRoot 'platforms/android-36/android.jar'
 $output=Join-Path $PSScriptRoot 'build'
 foreach($dir in @($output,"$output/classes","$output/dex","$output/assets")){New-Item -ItemType Directory -Force $dir | Out-Null}
-Copy-Item -LiteralPath "$taskRoot/dist/play.html","$taskRoot/dist/index.html" -Destination "$output/assets" -Force
+Copy-Item -LiteralPath "$taskRoot/dist/play.html","$taskRoot/dist/index.html","$taskRoot/dist/functions.html" -Destination "$output/assets" -Force
 Copy-Item -LiteralPath "$PSScriptRoot/native/LLAMA-LICENSE.txt","$PSScriptRoot/native/QWEN-LICENSE.txt","$PSScriptRoot/native/THREE-LICENSE.txt" -Destination "$output/assets" -Force
 function RunTool($exe,$toolArgs){ & $exe @toolArgs; if($LASTEXITCODE -ne 0){throw "Build failed: $exe"}}
 RunTool "$jdkRoot/bin/javac.exe" @('-encoding','UTF-8','-source','8','-target','8','-classpath',$platform,'-d',"$output/classes","$PSScriptRoot/src/com/tanktactics/promptarena/MainActivity.java","$PSScriptRoot/src/com/tanktactics/promptarena/PhoneAI.java")

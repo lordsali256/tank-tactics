@@ -5,17 +5,28 @@ const catalog=vm.runInNewContext(source.match(/const squadFunctions=([\s\S]*?)\.
 const types={Tank:'tank',Infantry:'infantry',Helicopter:'helicopter',Rocket:'rocket',Artillery:'artillery',Sniper:'sniper',Boat:'boat',Medic:'medic',Engineer:'engineer',Scout:'scout'};
 let doc=`# SquadScript 2 function reference
 
-SquadScript is a custom language for coordinating a whole squad. The local Qwen chatbot translates natural-language requests into this language. The game interprets validated orders as data; scripts cannot run JavaScript, access files, or change combat rules.
+SquadScript is a custom language interpreted as data by the game. It cannot execute JavaScript or access files. The game has no built-in LLM or programming chat. Use any external LLM you prefer, or write scripts yourself.
 
-## Program with natural language
+## Copy, ask, paste
 
-1. Open **Squad programming chat** in the game.
-2. Describe a tactic, for example: “Keep my tank at sniper range. Have the medic heal infantry and rocket soldiers lock onto armored targets.”
-3. Tap **Generate squad orders**. Android uses Qwen2.5 on the phone; the USB game uses computer-local Qwen3.5. The hosted website has no hosted model.
-4. Review the generated script. Invalid output and drafts without any unit orders are shown with errors and cannot be applied. Edit the preview if needed.
-5. Tap **Apply reviewed script**, then deploy. Follow-up chat requests can refine a draft. A model draft never changes your active script until you apply it.
+1. Copy this whole reference using the webpage's Copy documentation button.
+2. Paste it into your chosen LLM and include your unit types, star tiers and desired tactics. Ask for plain script text without JSON or Markdown fences.
+3. Open **Paste scripts** in the game and select a unit or **Squad coordination**.
+4. Paste the result, then **Validate & save script**. Invalid lines never replace saved scripts.
+5. Deploy. Every unit starts with its own basic nearest-target/range script and has no automatic squad formation.
 
-The script editor works without an LLM. The older **Compile with local AI** button interprets a tactical stance; the programming chat creates actual squad orders.
+A unit script affects only that unit: **all** means that unit. Optional squad orders affect the whole team and run after unit scripts. Both share the unit's latest 3 / 5 / 7 active order slots. Saving a unit script does not change another unit's script. Renaming changes the display name, not its stable callsign. Each pasted script may contain up to 3000 characters.
+
+### Example request for your LLM
+
+Return only SquadScript. My team is tank-1 (two stars), infantry-1 (one star), and medic-1 (one star). Have infantry protect the tank and have the medic heal injured foot troops. Keep each unit within its order capacity. Do not include stat buffs or invented functions.
+
+### Basic unit script
+
+all focus nearest
+all hold 255
+
+The preferred range differs by type: tank 255, infantry 215, rocket 320, artillery 420, sniper 390, helicopter 290, boat 340, medic 180, engineer 195 and scout 245.
 
 ## Syntax, selectors and priority
 
@@ -39,7 +50,7 @@ Callsigns remain stable during a fight when units die. The dead unit disappears;
 | all follow leader | Follow the leader in formation. A callsign can replace leader. |
 | infantry protect tank-1 | Screen the specified ally and prioritize nearby threats. |
 | helicopter flank leader | Move around the leader's target. |
-| all focus nearest | Concentrate on the nearest enemy to the leader. |
+| all focus nearest | Independently attack the nearest enemy to this unit. Use focus leader for shared targeting. |
 | all focus weakest | Prioritize the lowest enemy health fraction. |
 | all focus leader | Reuse the leader's current target when available. |
 | all hold 360 | Preferred range, 100–500 units. |
@@ -104,9 +115,13 @@ The checkbox is off by default and saved on this device. When enabled, campaign 
 
 ## Limits and support actions
 
-The 50 additional functions have fixed effects, energy costs and cooldowns. Healing never revives a dead unit. Repair/supply and triage work within their documented radii. Weapon and armor modifiers combine with equipment; bonuses do not compound again every simulation tick. Generated scripts are limited to 3000 characters; chat messages to 1200 characters. Unknown functions and arbitrary code are rejected.
+The 50 additional functions have fixed effects, energy costs and cooldowns. Healing never revives a dead unit. Repair/supply and triage work within their documented radii. Weapon and armor modifiers combine with equipment; bonuses do not compound again every simulation tick. Unit and squad scripts each have a 3000-character limit. Permanent victory upgrades are separate saved stats and never added to scripts. Unknown functions and arbitrary code are rejected.
 `;
 // Fence text is generated without embedding template-literal backticks.
 doc=doc.replace('selector function [when hp|ammo|energy|heat below|above N%]','```text\nselector function [when hp|ammo|energy|heat below|above N%]\n```').replace('leader tank-1\nall focus nearest\ntank brace','```text\nleader tank-1\nall focus nearest\ntank brace').replace('scout mark\n\nEach type','scout mark\n```\n\nEach type');
 fs.mkdirSync('docs',{recursive:true});fs.writeFileSync('docs/SQUADSCRIPT.md',doc);
 console.log('Documented '+catalog.length+' additional functions and all core orders.');
+
+const escape=s=>s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+let table=false,code=false,html='';for(const line of doc.split('\n')){if(line.startsWith('~~~')||line.startsWith(String.fromCharCode(96).repeat(3))){if(table){html+='</tbody></table>';table=false}code=!code;html+=code?'<pre><code>':'</code></pre>';continue}if(code){html+=escape(line)+'\n';continue}if(line.startsWith('|')){if(/^[| -]+$/.test(line))continue;if(!table){html+='<table><tbody>';table=true}html+='<tr>'+line.split('|').slice(1,-1).map(s=>'<td>'+escape(s.trim())+'</td>').join('')+'</tr>';continue}if(table){html+='</tbody></table>';table=false}const heading=line.match(/^(#{1,3}) (.*)$/);html+=heading?'<h'+heading[1].length+'>'+escape(heading[2])+'</h'+heading[1].length+'>':line.trim()?'<p>'+escape(line).replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')+'</p>':''}
+fs.writeFileSync('dist/functions.html','<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SquadScript · Complete function documentation</title><style>body{margin:0;background:#0e1912;color:#e5efdf;font:16px/1.6 system-ui}main{max-width:950px;margin:auto;padding:22px}nav{position:sticky;top:0;background:#17291e;padding:12px;display:flex;gap:12px;flex-wrap:wrap}a,button{color:#d7fb75}button{background:#263e2b;border:1px solid #7d955e;padding:9px;border-radius:8px;cursor:pointer}table{width:100%;border-collapse:collapse;margin:20px 0}td{border:1px solid #3f5843;padding:10px}pre{background:#203626;padding:15px;overflow:auto}h2{margin-top:42px;border-top:1px solid #4e644d;padding-top:20px}textarea{width:100%;min-height:160px}</style><nav><a href="./play.html">← Back to game</a><button id="copy">Copy full documentation for an LLM</button><span id="status"></span></nav><main>'+html+'<details><summary>Plain text to copy manually</summary><textarea id="reference" readonly>'+escape(doc)+'</textarea></details></main><script>document.getElementById("copy").onclick=async()=>{const t=document.getElementById("reference");try{await navigator.clipboard.writeText(t.value);document.getElementById("status").textContent="Copied"}catch{t.parentElement.open=true;t.focus();t.select();document.getElementById("status").textContent="Select and copy the reference below"}};</script></html>');

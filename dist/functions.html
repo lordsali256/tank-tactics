@@ -1,0 +1,225 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SquadScript · Complete function documentation</title><style>body{margin:0;background:#0e1912;color:#e5efdf;font:16px/1.6 system-ui}main{max-width:950px;margin:auto;padding:22px}nav{position:sticky;top:0;background:#17291e;padding:12px;display:flex;gap:12px;flex-wrap:wrap}a,button{color:#d7fb75}button{background:#263e2b;border:1px solid #7d955e;padding:9px;border-radius:8px;cursor:pointer}table{width:100%;border-collapse:collapse;margin:20px 0}td{border:1px solid #3f5843;padding:10px}pre{background:#203626;padding:15px;overflow:auto}h2{margin-top:42px;border-top:1px solid #4e644d;padding-top:20px}textarea{width:100%;min-height:160px}</style><nav><a href="./play.html">← Back to game</a><button id="copy">Copy full documentation for an LLM</button><span id="status"></span></nav><main><h1>SquadScript 2 function reference</h1><p>SquadScript is a custom language interpreted as data by the game. It cannot execute JavaScript or access files. The game has no built-in LLM or programming chat. Use any external LLM you prefer, or write scripts yourself.</p><h2>Copy, ask, paste</h2><p>1. Copy this whole reference using the webpage's Copy documentation button.</p><p>2. Paste it into your chosen LLM and include your unit types, star tiers and desired tactics. Ask for plain script text without JSON or Markdown fences.</p><p>3. Open <strong>Paste scripts</strong> in the game and select a unit or <strong>Squad coordination</strong>.</p><p>4. Paste the result, then <strong>Validate &amp; save script</strong>. Invalid lines never replace saved scripts.</p><p>5. Deploy. Every unit starts with its own basic nearest-target/range script and has no automatic squad formation.</p><p>A unit script affects only that unit: <strong>all</strong> means that unit. Optional squad orders affect the whole team and run after unit scripts. Both share the unit's latest 3 / 5 / 7 active order slots. Saving a unit script does not change another unit's script. Renaming changes the display name, not its stable callsign. Each pasted script may contain up to 3000 characters.</p><h3>Example request for your LLM</h3><p>Return only SquadScript. My team is tank-1 (two stars), infantry-1 (one star), and medic-1 (one star). Have infantry protect the tank and have the medic heal injured foot troops. Keep each unit within its order capacity. Do not include stat buffs or invented functions.</p><h3>Basic unit script</h3><p>all focus nearest</p><p>all hold 255</p><p>The preferred range differs by type: tank 255, infantry 215, rocket 320, artillery 420, sniper 390, helicopter 290, boat 340, medic 180, engineer 195 and scout 245.</p><h2>Syntax, selectors and priority</h2><pre><code>selector function [when hp|ammo|energy|heat below|above N%]
+</code></pre><p>Put one order on each line. Selectors are <strong>all</strong>, a unit type, or a stable callsign such as <strong>tank-1</strong>, <strong>infantry-2</strong>, or <strong>medic-1</strong>. Unit types: tank, infantry, helicopter, rocket, artillery, sniper, boat, medic, engineer, scout. Names are case insensitive. Blank lines and comments beginning with # are ignored.</p><p>Conditions use that unit's current resource percentage. Example: <strong>all seek-health when hp below 50%</strong>. Conditions can also gate core orders. Values must be 0–100%. Inactive conditional orders and retreat orders locked below ★★★ do not use a slot.</p><p>★ executes the latest <strong>3</strong> matching active orders, ★★ the latest <strong>5</strong>, and ★★★ the latest <strong>7</strong>. Leader designation is free. Later matching settings win; movement functions override the normal movement plan. Functions unique to a unit run only on that type, even with <strong>all</strong>. A mismatched explicit type, such as <strong>infantry brace</strong>, is rejected. Combining three matching units upgrades stars and capacity. Put your most important orders last. Stationary orders (stop, hover, steady, siege and field-hospital) suppress automatic dodging and zigzag while holding position. An active emergency retreat or cover condition takes priority; a later movement order can replace the stationary order.</p><p>Callsigns remain stable during a fight when units die. The dead unit disappears; its simulation record remains for results. Leader orders fall back to a surviving tank or another surviving ally.</p><h2>General: core functions</h2><table><tbody><tr><td>Order</td><td>Effect</td></tr><tr><td>leader tank-1</td><td>Designate the squad leader. Free slot; takes a callsign.</td></tr><tr><td>all follow leader</td><td>Follow the leader in formation. A callsign can replace leader.</td></tr><tr><td>infantry protect tank-1</td><td>Screen the specified ally and prioritize nearby threats.</td></tr><tr><td>helicopter flank leader</td><td>Move around the leader's target.</td></tr><tr><td>all focus nearest</td><td>Independently attack the nearest enemy to this unit. Use focus leader for shared targeting.</td></tr><tr><td>all focus weakest</td><td>Prioritize the lowest enemy health fraction.</td></tr><tr><td>all focus leader</td><td>Reuse the leader's current target when available.</td></tr><tr><td>all hold 360</td><td>Preferred range, 100–500 units.</td></tr><tr><td>all stance balanced</td><td>balanced, rush or sniper. Changes movement/fire preferences.</td></tr><tr><td>all retreat below 25%</td><td>Retreat when health drops below a fraction; requires ★★★.</td></tr></tbody></table><h2>General: 20 additional functions</h2><table><tbody><tr><td>Order</td><td>Effect</td></tr><tr><td>all advance</td><td>Advance toward the nearest enemy.</td></tr><tr><td>all withdraw</td><td>Move away from the nearest enemy.</td></tr><tr><td>all stop</td><td>Stop moving and fire from the current position.</td></tr><tr><td>all patrol</td><td>Patrol a 180-unit circle around the starting position.</td></tr><tr><td>all rally</td><td>Move within 60 units of the surviving leader.</td></tr><tr><td>all spread</td><td>Separate from nearby allies to reduce splash exposure.</td></tr><tr><td>all tighten</td><td>Stay within 45 units of the leader.</td></tr><tr><td>all kite</td><td>Keep 330 range while firing.</td></tr><tr><td>all orbit</td><td>Circle the nearest enemy at about 220 range.</td></tr><tr><td>all zigzag</td><td>Add alternating lateral evasion to movement.</td></tr><tr><td>all seek-health</td><td>Route toward the nearest health drop when damaged.</td></tr><tr><td>all seek-ammo</td><td>Route toward the nearest ammo drop when low.</td></tr><tr><td>all seek-shield</td><td>Route toward an available shield drop.</td></tr><tr><td>all seek-boost</td><td>Route toward an overdrive drop.</td></tr><tr><td>all reload</td><td>Reload a partial magazine when below half capacity.</td></tr><tr><td>all cooldown</td><td>Hold fire above 40% heat until the weapon cools.</td></tr><tr><td>all reserve-fire</td><td>Fire only in preferred range when ammo reserves are below 30.</td></tr><tr><td>all anti-air</td><td>Prioritize flying enemies.</td></tr><tr><td>all avoid-danger</td><td>Evade incoming projectiles and the volcanic crater.</td></tr><tr><td>all guard-point</td><td>Hold the starting position and defend it.</td></tr></tbody></table><h2>Tank unique functions</h2><table><tbody><tr><td>Order</td><td>Effect</td></tr><tr><td>tank brace</td><td>Take 20% less damage; move 35% slower.</td></tr><tr><td>tank ram</td><td>Deal 18 collision damage every 3 seconds within contact range.</td></tr><tr><td>tank hull-down</td><td>Seek cover at all health levels; armor improves near cover.</td></tr><tr><td>tank armor-piercing</td><td>Gain 25% penetration; fire 20% slower.</td></tr><tr><td>tank smoke</td><td>Create a 130-radius smoke screen for 3 seconds; 12-second cooldown, 20 energy.</td></tr></tbody></table><h2>Infantry unique functions</h2><table><tbody><tr><td>Order</td><td>Effect</td></tr><tr><td>infantry sprint</td><td>Move 30% faster; fire 25% slower.</td></tr><tr><td>infantry ambush</td><td>Deal 35% more damage while near cover.</td></tr><tr><td>infantry suppress</td><td>Hits add 15 weapon heat to the target.</td></tr><tr><td>infantry grenade</td><td>Throw a 30-damage grenade within 180 range; splash 65, cooldown 8 seconds, 15 energy.</td></tr></tbody></table><h2>Helicopter unique functions</h2><table><tbody><tr><td>Order</td><td>Effect</td></tr><tr><td>helicopter strafe</td><td>Fly perpendicular attack passes around the enemy.</td></tr><tr><td>helicopter hover</td><td>Hold position with twice the aim accuracy.</td></tr><tr><td>helicopter flare</td><td>Reduce incoming rocket damage 60% while energy is available; cooldown 5 seconds.</td></tr><tr><td>helicopter rocket-pod</td><td>Add 40 splash and 15% damage; fire 40% slower.</td></tr></tbody></table><h2>Rocket unique functions</h2><table><tbody><tr><td>Order</td><td>Effect</td></tr><tr><td>rocket lock-on</td><td>Double accuracy, add 15% penetration, and require a longer target lock.</td></tr><tr><td>rocket backblast</td><td>Move backward after each rocket shot.</td></tr><tr><td>rocket bunker-buster</td><td>Gain 70 splash radius; deal double damage to buildings.</td></tr></tbody></table><h2>Artillery unique functions</h2><table><tbody><tr><td>Order</td><td>Effect</td></tr><tr><td>artillery barrage</td><td>Fire 40% faster at 70% shell damage.</td></tr><tr><td>artillery siege</td><td>Hold position and deal triple damage to buildings.</td></tr><tr><td>artillery displace</td><td>Move perpendicular to the target while reloading after a shot.</td></tr></tbody></table><h2>Sniper unique functions</h2><table><tbody><tr><td>Order</td><td>Effect</td></tr><tr><td>sniper steady</td><td>Stop moving and double aim accuracy.</td></tr><tr><td>sniper headshot</td><td>Gain 25 percentage points of critical chance against foot troops.</td></tr><tr><td>sniper camouflage</td><td>Halve radar signature until 2 seconds after firing.</td></tr></tbody></table><h2>Boat unique functions</h2><table><tbody><tr><td>Order</td><td>Effect</td></tr><tr><td>boat broadside</td><td>Circle the target at naval firing range.</td></tr><tr><td>boat depth-charge</td><td>Deal 35 splash damage to nearby boats within 90 range; cooldown 8 seconds, 15 energy.</td></tr></tbody></table><h2>Medic unique functions</h2><table><tbody><tr><td>Order</td><td>Effect</td></tr><tr><td>medic triage</td><td>Heal the most injured foot ally by 25 within 150 range; cooldown 6 seconds, 15 energy.</td></tr><tr><td>medic field-hospital</td><td>Stop and heal nearby allies 3 HP/second within 110 range; drain 4 energy/second.</td></tr></tbody></table><h2>Engineer unique functions</h2><table><tbody><tr><td>Order</td><td>Effect</td></tr><tr><td>engineer repair</td><td>Repair the most injured vehicle by 25 within 150 range; cooldown 6 seconds, 15 energy.</td></tr><tr><td>engineer supply</td><td>Give a low-ammo ally 25 reserve rounds within 140 range; cooldown 8 seconds, 10 energy.</td></tr></tbody></table><h2>Scout unique functions</h2><table><tbody><tr><td>Order</td><td>Effect</td></tr><tr><td>scout scan</td><td>Boost nearby allies’ radar 30% for 4 seconds; cooldown 8 seconds, 15 energy.</td></tr><tr><td>scout mark</td><td>Mark a target for 20% extra squad damage for 4 seconds; cooldown 8 seconds, 15 energy.</td></tr></tbody></table><h2>Example squad script</h2><pre><code>leader tank-1
+all focus nearest
+tank brace
+tank seek-health when hp below 45%
+infantry protect leader
+infantry suppress
+rocket lock-on
+medic triage
+engineer repair
+scout mark
+</code></pre><p>Each type sees only its matching orders. The example stays within three slots per unit. Change a unit-specific selector to a callsign to specialize one unit.</p><h2>Unit unlocks and balance</h2><table><tbody><tr><td>Type</td><td>First campaign round</td><td>Base HP</td><td>Role</td></tr><tr><td>---</td><td>---:</td><td>---:</td><td>---</td></tr><tr><td>Tank</td><td>1</td><td>160</td><td>Armor, cannon and screening</td></tr><tr><td>Infantry</td><td>1</td><td>115</td><td>Foot fire and suppression; weak against heavy armor</td></tr><tr><td>Rocket soldier</td><td>1</td><td>110</td><td>Antiarmor rockets</td></tr><tr><td>Scout car</td><td>2</td><td>95</td><td>Radar and target marking</td></tr><tr><td>Sniper</td><td>3</td><td>90</td><td>Long-range precision</td></tr><tr><td>Medic</td><td>3</td><td>85</td><td>Foot-troop healing</td></tr><tr><td>Artillery</td><td>4</td><td>135</td><td>Indirect fire and demolition</td></tr><tr><td>Engineer</td><td>4</td><td>100</td><td>Vehicle repair and ammunition</td></tr><tr><td>Boat</td><td>5</td><td>150</td><td>Coastal maps only</td></tr><tr><td>Helicopter</td><td>6</td><td>70</td><td>Fragile air attacker</td></tr></tbody></table><p>Both recruits and computer opponents respect these unlocks. Previously owned locked units must be benched before a campaign deployment. Invite matches use the submitted squads rather than campaign unlocks. Computer units deal 20% less damage; opponents add one unit every four rounds and upgrade a star every eight rounds. Round 1 remains one AI tank with 120 HP. Human multiplayer opponents do not receive the AI damage reduction.</p><h2>Powerups</h2><p>The battlefield starts with eight drops. Destroyed buildings have a 30% loot chance, capped at ten unused drops. A healthy/full unit leaves an unneeded pickup for another unit.</p><table><tbody><tr><td>Drop</td><td>Effect</td></tr><tr><td>Green health</td><td>Restore up to 50 HP; collected only when missing more than 5 HP.</td></tr><tr><td>Orange ammo</td><td>Add up to 40 reserve rounds and refill the magazine; collected only when supplies are low.</td></tr><tr><td>Purple overdrive</td><td>10 seconds of 35% extra top speed and 35% shorter shot interval.</td></tr><tr><td>Blue shield</td><td>Raise bonus shield to at least 40. Remains until consumed by damage.</td></tr></tbody></table><p>Pickup effects appear in the battle log and over the selected unit's 3D view. Drops are shared by both sides. Units must move close to collect them; use seek-* functions to assign that task.</p><h2>Auto Restart Level</h2><p>The checkbox is off by default and saved on this device. When enabled, campaign defeat retries the same round after three seconds if lives remain. It stops after three defeats. Turn it off to edit tactics between retries. Victories wait for both reward choices; replays and online matches never automatically restart.</p><h2>Limits and support actions</h2><p>The 50 additional functions have fixed effects, energy costs and cooldowns. Healing never revives a dead unit. Repair/supply and triage work within their documented radii. Weapon and armor modifiers combine with equipment; bonuses do not compound again every simulation tick. Unit and squad scripts each have a 3000-character limit. Permanent victory upgrades are separate saved stats and never added to scripts. Unknown functions and arbitrary code are rejected.</p><details><summary>Plain text to copy manually</summary><textarea id="reference" readonly># SquadScript 2 function reference
+
+SquadScript is a custom language interpreted as data by the game. It cannot execute JavaScript or access files. The game has no built-in LLM or programming chat. Use any external LLM you prefer, or write scripts yourself.
+
+## Copy, ask, paste
+
+1. Copy this whole reference using the webpage's Copy documentation button.
+2. Paste it into your chosen LLM and include your unit types, star tiers and desired tactics. Ask for plain script text without JSON or Markdown fences.
+3. Open **Paste scripts** in the game and select a unit or **Squad coordination**.
+4. Paste the result, then **Validate &amp; save script**. Invalid lines never replace saved scripts.
+5. Deploy. Every unit starts with its own basic nearest-target/range script and has no automatic squad formation.
+
+A unit script affects only that unit: **all** means that unit. Optional squad orders affect the whole team and run after unit scripts. Both share the unit's latest 3 / 5 / 7 active order slots. Saving a unit script does not change another unit's script. Renaming changes the display name, not its stable callsign. Each pasted script may contain up to 3000 characters.
+
+### Example request for your LLM
+
+Return only SquadScript. My team is tank-1 (two stars), infantry-1 (one star), and medic-1 (one star). Have infantry protect the tank and have the medic heal injured foot troops. Keep each unit within its order capacity. Do not include stat buffs or invented functions.
+
+### Basic unit script
+
+all focus nearest
+all hold 255
+
+The preferred range differs by type: tank 255, infantry 215, rocket 320, artillery 420, sniper 390, helicopter 290, boat 340, medic 180, engineer 195 and scout 245.
+
+## Syntax, selectors and priority
+
+```text
+selector function [when hp|ammo|energy|heat below|above N%]
+```
+
+Put one order on each line. Selectors are **all**, a unit type, or a stable callsign such as **tank-1**, **infantry-2**, or **medic-1**. Unit types: tank, infantry, helicopter, rocket, artillery, sniper, boat, medic, engineer, scout. Names are case insensitive. Blank lines and comments beginning with # are ignored.
+
+Conditions use that unit's current resource percentage. Example: **all seek-health when hp below 50%**. Conditions can also gate core orders. Values must be 0–100%. Inactive conditional orders and retreat orders locked below ★★★ do not use a slot.
+
+★ executes the latest **3** matching active orders, ★★ the latest **5**, and ★★★ the latest **7**. Leader designation is free. Later matching settings win; movement functions override the normal movement plan. Functions unique to a unit run only on that type, even with **all**. A mismatched explicit type, such as **infantry brace**, is rejected. Combining three matching units upgrades stars and capacity. Put your most important orders last. Stationary orders (stop, hover, steady, siege and field-hospital) suppress automatic dodging and zigzag while holding position. An active emergency retreat or cover condition takes priority; a later movement order can replace the stationary order.
+
+Callsigns remain stable during a fight when units die. The dead unit disappears; its simulation record remains for results. Leader orders fall back to a surviving tank or another surviving ally.
+
+## General: core functions
+
+| Order | Effect |
+|---|---|
+| leader tank-1 | Designate the squad leader. Free slot; takes a callsign. |
+| all follow leader | Follow the leader in formation. A callsign can replace leader. |
+| infantry protect tank-1 | Screen the specified ally and prioritize nearby threats. |
+| helicopter flank leader | Move around the leader's target. |
+| all focus nearest | Independently attack the nearest enemy to this unit. Use focus leader for shared targeting. |
+| all focus weakest | Prioritize the lowest enemy health fraction. |
+| all focus leader | Reuse the leader's current target when available. |
+| all hold 360 | Preferred range, 100–500 units. |
+| all stance balanced | balanced, rush or sniper. Changes movement/fire preferences. |
+| all retreat below 25% | Retreat when health drops below a fraction; requires ★★★. |
+
+## General: 20 additional functions
+
+| Order | Effect |
+|---|---|
+| all advance | Advance toward the nearest enemy. |
+| all withdraw | Move away from the nearest enemy. |
+| all stop | Stop moving and fire from the current position. |
+| all patrol | Patrol a 180-unit circle around the starting position. |
+| all rally | Move within 60 units of the surviving leader. |
+| all spread | Separate from nearby allies to reduce splash exposure. |
+| all tighten | Stay within 45 units of the leader. |
+| all kite | Keep 330 range while firing. |
+| all orbit | Circle the nearest enemy at about 220 range. |
+| all zigzag | Add alternating lateral evasion to movement. |
+| all seek-health | Route toward the nearest health drop when damaged. |
+| all seek-ammo | Route toward the nearest ammo drop when low. |
+| all seek-shield | Route toward an available shield drop. |
+| all seek-boost | Route toward an overdrive drop. |
+| all reload | Reload a partial magazine when below half capacity. |
+| all cooldown | Hold fire above 40% heat until the weapon cools. |
+| all reserve-fire | Fire only in preferred range when ammo reserves are below 30. |
+| all anti-air | Prioritize flying enemies. |
+| all avoid-danger | Evade incoming projectiles and the volcanic crater. |
+| all guard-point | Hold the starting position and defend it. |
+
+## Tank unique functions
+
+| Order | Effect |
+|---|---|
+| tank brace | Take 20% less damage; move 35% slower. |
+| tank ram | Deal 18 collision damage every 3 seconds within contact range. |
+| tank hull-down | Seek cover at all health levels; armor improves near cover. |
+| tank armor-piercing | Gain 25% penetration; fire 20% slower. |
+| tank smoke | Create a 130-radius smoke screen for 3 seconds; 12-second cooldown, 20 energy. |
+
+## Infantry unique functions
+
+| Order | Effect |
+|---|---|
+| infantry sprint | Move 30% faster; fire 25% slower. |
+| infantry ambush | Deal 35% more damage while near cover. |
+| infantry suppress | Hits add 15 weapon heat to the target. |
+| infantry grenade | Throw a 30-damage grenade within 180 range; splash 65, cooldown 8 seconds, 15 energy. |
+
+## Helicopter unique functions
+
+| Order | Effect |
+|---|---|
+| helicopter strafe | Fly perpendicular attack passes around the enemy. |
+| helicopter hover | Hold position with twice the aim accuracy. |
+| helicopter flare | Reduce incoming rocket damage 60% while energy is available; cooldown 5 seconds. |
+| helicopter rocket-pod | Add 40 splash and 15% damage; fire 40% slower. |
+
+## Rocket unique functions
+
+| Order | Effect |
+|---|---|
+| rocket lock-on | Double accuracy, add 15% penetration, and require a longer target lock. |
+| rocket backblast | Move backward after each rocket shot. |
+| rocket bunker-buster | Gain 70 splash radius; deal double damage to buildings. |
+
+## Artillery unique functions
+
+| Order | Effect |
+|---|---|
+| artillery barrage | Fire 40% faster at 70% shell damage. |
+| artillery siege | Hold position and deal triple damage to buildings. |
+| artillery displace | Move perpendicular to the target while reloading after a shot. |
+
+## Sniper unique functions
+
+| Order | Effect |
+|---|---|
+| sniper steady | Stop moving and double aim accuracy. |
+| sniper headshot | Gain 25 percentage points of critical chance against foot troops. |
+| sniper camouflage | Halve radar signature until 2 seconds after firing. |
+
+## Boat unique functions
+
+| Order | Effect |
+|---|---|
+| boat broadside | Circle the target at naval firing range. |
+| boat depth-charge | Deal 35 splash damage to nearby boats within 90 range; cooldown 8 seconds, 15 energy. |
+
+## Medic unique functions
+
+| Order | Effect |
+|---|---|
+| medic triage | Heal the most injured foot ally by 25 within 150 range; cooldown 6 seconds, 15 energy. |
+| medic field-hospital | Stop and heal nearby allies 3 HP/second within 110 range; drain 4 energy/second. |
+
+## Engineer unique functions
+
+| Order | Effect |
+|---|---|
+| engineer repair | Repair the most injured vehicle by 25 within 150 range; cooldown 6 seconds, 15 energy. |
+| engineer supply | Give a low-ammo ally 25 reserve rounds within 140 range; cooldown 8 seconds, 10 energy. |
+
+## Scout unique functions
+
+| Order | Effect |
+|---|---|
+| scout scan | Boost nearby allies’ radar 30% for 4 seconds; cooldown 8 seconds, 15 energy. |
+| scout mark | Mark a target for 20% extra squad damage for 4 seconds; cooldown 8 seconds, 15 energy. |
+
+## Example squad script
+
+```text
+leader tank-1
+all focus nearest
+tank brace
+tank seek-health when hp below 45%
+infantry protect leader
+infantry suppress
+rocket lock-on
+medic triage
+engineer repair
+scout mark
+```
+
+Each type sees only its matching orders. The example stays within three slots per unit. Change a unit-specific selector to a callsign to specialize one unit.
+
+## Unit unlocks and balance
+
+| Type | First campaign round | Base HP | Role |
+|---|---:|---:|---|
+| Tank | 1 | 160 | Armor, cannon and screening |
+| Infantry | 1 | 115 | Foot fire and suppression; weak against heavy armor |
+| Rocket soldier | 1 | 110 | Antiarmor rockets |
+| Scout car | 2 | 95 | Radar and target marking |
+| Sniper | 3 | 90 | Long-range precision |
+| Medic | 3 | 85 | Foot-troop healing |
+| Artillery | 4 | 135 | Indirect fire and demolition |
+| Engineer | 4 | 100 | Vehicle repair and ammunition |
+| Boat | 5 | 150 | Coastal maps only |
+| Helicopter | 6 | 70 | Fragile air attacker |
+
+Both recruits and computer opponents respect these unlocks. Previously owned locked units must be benched before a campaign deployment. Invite matches use the submitted squads rather than campaign unlocks. Computer units deal 20% less damage; opponents add one unit every four rounds and upgrade a star every eight rounds. Round 1 remains one AI tank with 120 HP. Human multiplayer opponents do not receive the AI damage reduction.
+
+## Powerups
+
+The battlefield starts with eight drops. Destroyed buildings have a 30% loot chance, capped at ten unused drops. A healthy/full unit leaves an unneeded pickup for another unit.
+
+| Drop | Effect |
+|---|---|
+| Green health | Restore up to 50 HP; collected only when missing more than 5 HP. |
+| Orange ammo | Add up to 40 reserve rounds and refill the magazine; collected only when supplies are low. |
+| Purple overdrive | 10 seconds of 35% extra top speed and 35% shorter shot interval. |
+| Blue shield | Raise bonus shield to at least 40. Remains until consumed by damage. |
+
+Pickup effects appear in the battle log and over the selected unit's 3D view. Drops are shared by both sides. Units must move close to collect them; use seek-* functions to assign that task.
+
+## Auto Restart Level
+
+The checkbox is off by default and saved on this device. When enabled, campaign defeat retries the same round after three seconds if lives remain. It stops after three defeats. Turn it off to edit tactics between retries. Victories wait for both reward choices; replays and online matches never automatically restart.
+
+## Limits and support actions
+
+The 50 additional functions have fixed effects, energy costs and cooldowns. Healing never revives a dead unit. Repair/supply and triage work within their documented radii. Weapon and armor modifiers combine with equipment; bonuses do not compound again every simulation tick. Unit and squad scripts each have a 3000-character limit. Permanent victory upgrades are separate saved stats and never added to scripts. Unknown functions and arbitrary code are rejected.
+</textarea></details></main><script>document.getElementById("copy").onclick=async()=>{const t=document.getElementById("reference");try{await navigator.clipboard.writeText(t.value);document.getElementById("status").textContent="Copied"}catch{t.parentElement.open=true;t.focus();t.select();document.getElementById("status").textContent="Select and copy the reference below"}};</script></html>

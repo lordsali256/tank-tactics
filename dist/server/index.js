@@ -582,7 +582,6 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     }
   }
   $("compile").onclick = compileModel;
-  checkModel();
   $("prompt").addEventListener("input", () => {
     compiledPlan = null;
     preview();
@@ -613,6 +612,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     boat: { name: "Boat", role: "Naval cannon; sea maps only", hp: 150, damage: 31, speed: 110, range: 340, reload: 1.1, mag: 4, spread: 0.07, r: 19, water: true },
     sniper: { name: "Sniper", role: "Accurate long-range single shots", hp: 90, damage: 39, speed: 100, range: 390, reload: 1.4, mag: 4, spread: 0.018, r: 12 }
   };
+  Object.assign(unitTypes, { medic: { name: "Medic", hp: 85, damage: 9, speed: 82, range: 180, reload: 0.7, mag: 8, spread: 0.13, r: 12 }, engineer: { name: "Engineer", hp: 100, damage: 11, speed: 75, range: 195, reload: 0.65, mag: 10, spread: 0.12, r: 12 }, scout: { name: "Scout car", hp: 95, damage: 14, speed: 125, range: 245, reload: 0.6, mag: 10, spread: 0.1, r: 16 } });
   const rosterKey = "tank-tactics-roster-v1";
   let roster = [], selectedId = "", rosterSerial = 0, economy = { credits: 100, slots: 1, reserve: {} };
   let levelReward = null;
@@ -1062,7 +1062,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       const x = 240 + col * 205 + rnd() * 45, y = 75 + row * 235 + rnd() * 35, w = 65 + rnd() * 75, h = 65 + rnd() * 70;
       if (Math.abs(y + h / 2 - H * 0.45) < 145 || campaign.map === "coast" && y + h > H * 0.54) continue;
       const hp = 100 + Math.floor(rnd() * 100);
-      buildings.push({ id: "building-" + row + "-" + col, x, y, w, h, height: 40 + rnd() * 110, hp, maxHp: hp, destroyed: false });
+      buildings.push({ id: "building-" + row + "-" + col, x, y, w, h, height: 40 + rnd() * 110, hp, maxHp: hp, style: (row + col) % 4, destroyed: false });
     }
     rocks.splice(0, rocks.length, ...buildings);
     for (const b2 of campaign.base || []) if (b2.kind === "wall" && !onlinePlaying) rocks.push({ x: b2.x - 18 - (b2.tier - 1) * 4, y: b2.y - 40, w: 36 + (b2.tier - 1) * 8, h: 80 });
@@ -1076,6 +1076,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     sparks.push({ x: b2.x + b2.w / 2, y: b2.y + b2.h / 2, life: 0.5, color: "#ffb05e" });
     if (b2.hp === 0) {
       b2.destroyed = true;
+      b2.destroyedAt = elapsed;
       const at = rocks.indexOf(b2);
       if (at >= 0) rocks.splice(at, 1);
       worldRevision++;
@@ -2040,7 +2041,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     }
     if (order.focus?.value === "weakest") return foes.sort((a2, b2) => a2.hp / a2.maxHp - b2.hp / b2.maxHp)[0];
     if (order.focus?.value === "leader" && leader !== t && foes.includes(leader?.target)) return leader.target;
-    if (order.focus) return foes.sort((a2, b2) => Math.hypot(a2.x - (leader || t).x, a2.y - (leader || t).y) - Math.hypot(b2.x - (leader || t).x, b2.y - (leader || t).y))[0];
+    if (order.focus) return foes.sort((a2, b2) => Math.hypot(a2.x - t.x, a2.y - t.y) - Math.hypot(b2.x - t.x, b2.y - t.y))[0];
     return soloTarget(t);
   };
   function aiMovement(t, foe) {
@@ -2199,8 +2200,6 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   };
   $("reset").onclick = () => resetRun();
   for (const u of roster) {
-    u.instruction = squadScript;
-    u.squadScript = squadScript;
     u.commands = unlocked(u);
   }
   $("prompt").value = squadScript;
@@ -2384,7 +2383,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   }
   parseSquadScript = function(text) {
     if (orderCache.has(text)) return orderCache.get(text);
-    if (typeof text !== "string" || text.length > 3e3) return { leader: "tank-1", rules: [], errors: ["SquadScript is limited to 3000 characters."] };
+    if (typeof text !== "string" || text.length > 6001) return { leader: "tank-1", rules: [], errors: ["SquadScript is combined limit is 6001 characters."] };
     const rules = [], errors = [];
     let leader = "tank-1";
     const validSelector = (value) => value === "all" || Object.keys(unitTypes).some((type) => value === type || new RegExp("^" + type + "-[1-9][0-9]?$").test(value));
@@ -2792,97 +2791,434 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     $("functionDialog").showModal();
   };
   $("closeFunctions").onclick = () => $("functionDialog").close();
-  function validateChatDraft(text) {
-    const parsed = parseSquadScript(text);
-    return parsed.rules.length ? parsed : { ...parsed, errors: [...parsed.errors, "Add at least one unit order before applying."] };
+  function basicScript(type) {
+    return "all focus nearest\nall hold " + unitTypes[type].range;
   }
-  let chatBusy = false, chatDraft = "", chatHistory = [];
-  function chatContext() {
-    return "Compile natural language into SquadScript 2. Return JSON with one field script containing newline-separated orders, no markdown. Preserve every explicit numeric range using hold (never substitute kite), and every health condition using when hp below N%. Half health is 50%. Remove obsolete or contradictory orders from the current script. Keep only the requested tactics, within the active order capacity. Use only selectors all or these unit types/callsigns: " + roster.map((u, i) => u.type + "-" + roster.slice(0, i + 1).filter((a2) => a2.type === u.type).length).join(", ") + ". Leader command leader tank-1. General core: SELECTOR follow leader; protect leader; flank leader; focus nearest|weakest|leader; hold 100-500; stance rush|balanced|sniper; retreat below 25%. Additional functions have no arguments: " + squadFunctions.filter((f) => f.group === "General" || roster.some((u) => u.type === groupType(f.group))).map((f) => (f.group === "General" ? "all" : groupType(f.group)) + " " + f.name + ": " + f.description).join("; ") + ". Conditions append when hp|ammo|energy|heat below|above N%. At most " + Math.max(...roster.map(capacityFor)) + " active orders per unit; latest matching active orders run. Do not invent functions or units. Current script:\n" + $("prompt").value.slice(0, 1200);
+  const makeIndependentUnit = newUnit;
+  newUnit = function(type, tier = 1) {
+    const u = makeIndependentUnit(type, tier);
+    return { ...u, name: unitTypes[type].name, unitScript: basicScript(type), skin: "olive", upgrades: {} };
+  };
+  if (!campaign.scriptWorkshop) {
+    for (const u of roster) {
+      u.unitScript = basicScript(u.type);
+      u.name = u.name || unitTypes[u.type].name;
+      u.skin = u.skin || campaign.skin || "olive";
+      u.upgrades = {};
+      delete u.squadScript;
+    }
+    campaign.orders = "";
+    campaign.scriptWorkshop = true;
   }
-  async function draftSquadOrders() {
-    if (chatBusy || compiling || mode === "running" || mode === "won") return;
-    const input = $("chatInput").value.trim();
-    if (!input || input.length > 1200) {
-      $("chatStatus").textContent = "Describe your tactics in 1\u20131200 characters.";
+  for (const u of roster) {
+    u.unitScript = typeof u.unitScript === "string" && !parseSquadScript(u.unitScript).errors.length ? u.unitScript : basicScript(u.type);
+    u.name = String(u.name || unitTypes[u.type].name).slice(0, 28);
+    u.skin = u.skin || "olive";
+    u.upgrades = u.upgrades || {};
+  }
+  campaign.orders = typeof campaign.orders === "string" && !parseSquadScript(campaign.orders).errors.length ? campaign.orders : "";
+  squadScript = campaign.orders;
+  $("prompt").value = squadScript;
+  compiledPlan = null;
+  compiledText = "";
+  nextBuff = null;
+  activeBuff = null;
+  saveProgram = function() {
+    campaign.orders = $("prompt").value;
+    squadScript = campaign.orders;
+    for (const u of roster) {
+      u.commands = unlocked(u);
+      u.compiled = null;
+      u.compiledText = "";
+      u.instruction = u.unitScript || basicScript(u.type);
+      delete u.squadScript;
+    }
+    saveRoster();
+  };
+  scriptFor = function(t) {
+    return t.squadScript || t.unitScript || basicScript(t.type);
+  };
+  planForUnit = function(u) {
+    return { style: "balanced", preferred: unitStats(u).range, cover: false, coverBelow: 0.5, evade: false, retreat: false, retreatBelow: 0.25, firePolicy: "always" };
+  };
+  const independentSpawn = spawnCombat;
+  spawnCombat = function(u, team, index, count) {
+    const t = independentSpawn(u, team, index, count);
+    t.name = u.name || unitTypes[u.type].name;
+    t.skin = u.skin || "olive";
+    t.unitScript = u.unitScript || basicScript(u.type);
+    if (!t.aiControlled) t.squadScript = u.squadScript || t.unitScript + (campaign.orders ? "\n" + campaign.orders : "");
+    t.basePlan = planForUnit(u);
+    t.plan = { ...t.basePlan };
+    return t;
+  };
+  activateUnit = function(id) {
+    if (mode === "running" || mode === "won") return;
+    selectedId = id;
+    commands2 = new Set(unlocked(selectedUnit()));
+    saveRoster();
+    resetPositions();
+    preview();
+    renderRoster();
+  };
+  preview = function() {
+    plan = planForUnit(selectedUnit());
+    const p = parseSquadScript(campaign.orders);
+    $("planPreview").textContent = p.errors.join(" \xB7 ") || "Independent unit scripts" + (p.rules.length ? " \xB7 " + p.rules.length + " squad orders" : " \xB7 No squad coordination");
+    updateProgramLive("Ready");
+    renderStats();
+  };
+  const workshopDeploy = deploy;
+  deploy = function() {
+    if (mode === "running" || mode === "won") return;
+    for (const u of roster.filter((u2) => u2.deployed !== false)) {
+      const p = parseSquadScript(u.unitScript || basicScript(u.type));
+      if (p.errors.length) {
+        $("message").textContent = u.name + ": " + p.errors.join(" \xB7 ");
+        return;
+      }
+    }
+    compiledPlan = null;
+    compiling = false;
+    nextBuff = null;
+    activeBuff = null;
+    workshopDeploy();
+  };
+  $("deploy").onclick = () => deploy();
+  generateRewardTactics = async () => {
+  };
+  const permanentKinds = ["armor", "speed", "damage", "loading", "shield", "demolition", "repair", "critical"];
+  const permanentNames = ["Armor training", "Engine tuning", "Weapon calibration", "Loader tuning", "Shield capacity", "Demolition training", "Field repair", "Critical targeting"];
+  const permanentEffects = ["+1% damage resistance", "+2% movement speed", "+2% weapon damage", "+2.5% ammo loading speed", "+3 shield capacity", "+3 splash radius", "+0.03 HP/sec repair", "+0.5% critical chance"];
+  rewardOptions.splice(0, rewardOptions.length, ...permanentKinds.map((kind, i) => ({ kind, buff: permanentNames[i], instruction: permanentNames[i], effect: permanentEffects[i] + " permanently for the chosen unit" })));
+  const statsBeforePermanent = unitStats;
+  unitStats = function(u = selectedUnit()) {
+    const s = statsBeforePermanent(u), b2 = u.upgrades || {}, n = (k) => Math.max(0, Math.min(20, Number(b2[k]) || 0));
+    return { ...s, damage: s.damage * (1 + 0.02 * n("damage")), speed: s.speed * (1 + 0.02 * n("speed")), damageResistance: Math.min(0.6, s.damageResistance + 0.01 * n("armor")), loadingSpeed: s.loadingSpeed * (1 + 0.025 * n("loading")), shieldCapacity: s.shieldCapacity + 3 * n("shield"), explosionRadius: s.explosionRadius + 3 * n("demolition"), repairRate: s.repairRate + 0.03 * n("repair"), critChance: Math.min(0.8, s.critChance + 5e-3 * n("critical")) };
+  };
+  const recruitReward = chooseReward;
+  chooseReward = function(option) {
+    if (option.unitType) return recruitReward(option);
+    if (mode !== "won" || !levelReward || levelReward.tactic || !levelReward.tacticOptions.includes(option)) return;
+    const u = roster.find((u2) => u2.id === levelReward.upgradeTarget) || selectedUnit();
+    u.upgrades = u.upgrades || {};
+    if ((u.upgrades[option.kind] || 0) >= 20) economy.credits += 30;
+    else u.upgrades[option.kind] = (u.upgrades[option.kind] || 0) + 1;
+    levelReward.tactic = option;
+    saveRoster();
+    renderLevelRewards();
+    updateBuffStatus();
+  };
+  const rewardLayout = renderLevelRewards;
+  renderLevelRewards = function() {
+    rewardLayout();
+    if (!levelReward.tactic) {
+      const label = document.createElement("label");
+      label.textContent = "Upgrade unit (maxed upgrades grant 30 credits): ";
+      const select = document.createElement("select");
+      for (const u of roster) {
+        const o = document.createElement("option");
+        o.value = u.id;
+        o.textContent = u.name;
+        select.append(o);
+      }
+      select.value = levelReward.upgradeTarget || selectedId;
+      select.onchange = () => {
+        levelReward.upgradeTarget = select.value;
+      };
+      label.append(select);
+      $("rewards").append(label);
+    }
+    const headings = $("rewards").querySelectorAll?.("h3");
+    if (headings?.[1]) headings[1].textContent = levelReward.tactic ? "\u2713 Permanent upgrade claimed" : "2 / Permanent upgrade for " + selectedUnit().name;
+  };
+  updateBuffStatus = function() {
+    $("buffStatus").textContent = "Permanent upgrades \xB7 " + Object.values(selectedUnit()?.upgrades || {}).reduce((a2, b2) => a2 + b2, 0);
+    renderStats();
+  };
+  renderStats = function() {
+    const u = selectedUnit(), live = mode === "running" ? battleUnits.find((t) => t.id === u.id) : null, s = live?.stats || unitStats(u), p = live?.plan || planForUnit(u), root = $("statList");
+    root.replaceChildren();
+    for (const [label, value] of [["Unit", u.name + " \xB7 " + unitTypes[u.type].name], ["Stars", "\u2605".repeat(u.tier)], ["Health", Math.round(live?.hp ?? s.hp) + " / " + s.hp], ["Damage", s.damage.toFixed(1)], ["Speed", s.speed.toFixed(1)], ["Preferred range", p.preferred], ["Magazine", (live?.ammo ?? s.mag) + " / " + s.mag], ["Ammo loading", s.loadingSpeed.toFixed(2) + " rounds/sec"], ["Shot interval", s.reload.toFixed(2) + " sec"], ["Crit chance", (s.critChance * 100).toFixed(1) + "%"], ["Armor", (s.armor * 100).toFixed(1) + "%"], ["Resistance", (s.damageResistance * 100).toFixed(1) + "%"], ["Shield", s.shieldCapacity], ["Repair", s.repairRate.toFixed(2) + " HP/sec"], ["Radar", s.radarRange], ["Command slots", capacityFor(u)], ["Crit multiplier", s.critMultiplier], ["Penetration", s.penetration], ["Projectile speed", s.projectileSpeed], ["Explosion radius", s.explosionRadius], ["Splash falloff", s.splashFalloff], ["Accuracy", s.accuracy.toFixed(1)], ["Reload delay", s.reloadDelay], ["Ammo reserve", s.ammoReserve], ["Heat capacity", s.heatCapacity], ["Heat per shot", s.heatPerShot], ["Cooling rate", s.coolingRate], ["Shield recharge", s.shieldRecharge], ["Impact resistance", s.impactResistance], ["Acceleration", s.acceleration], ["Braking", s.braking], ["Hull turn rate", s.turnRate], ["Turret turn rate", s.turretTurnRate], ["Reverse speed", s.reverseSpeed], ["Terrain traction", s.terrainTraction], ["Scan interval", s.scanInterval], ["Target lock time", s.targetLockTime], ["Energy capacity", s.energyCapacity], ["Energy regeneration", s.energyRegeneration]]) {
+      const cell = document.createElement("div"), a2 = document.createElement("small"), b2 = document.createElement("b");
+      cell.className = "stat-cell";
+      a2.textContent = label;
+      b2.textContent = String(value);
+      cell.append(a2, b2);
+      root.append(cell);
+    }
+  };
+  function workshopChoices() {
+    const select = $("scriptTarget");
+    select.replaceChildren();
+    for (const [id, label] of [["squad", "Squad coordination (optional)"], ...roster.map((u) => [u.id, u.name + " \xB7 " + unitTypes[u.type].name])]) {
+      const o = document.createElement("option");
+      o.value = id;
+      o.textContent = label;
+      select.append(o);
+    }
+    select.value = selectedId;
+    loadScriptTarget();
+  }
+  function loadScriptTarget() {
+    const u = roster.find((u2) => u2.id === $("scriptTarget").value);
+    $("pasteScript").value = u ? u.unitScript : campaign.orders;
+    $("scriptFeedback").textContent = u ? "Only " + u.name + " executes this script. Use all to address this unit." : "Squad orders apply after unit scripts and consume the same 3 / 5 / 7 command slots.";
+  }
+  $("scriptsButton").onclick = () => {
+    workshopChoices();
+    $("scriptsDialog").showModal();
+  };
+  $("scriptTarget").onchange = loadScriptTarget;
+  $("closeScripts").onclick = () => $("scriptsDialog").close();
+  $("saveScript").onclick = () => {
+    if (mode === "running" || mode === "won") return;
+    const text = $("pasteScript").value.trim();
+    if (text.length > 3e3) {
+      $("scriptFeedback").textContent = "Limit: 3000 characters.";
       return;
     }
-    chatBusy = true;
-    $("chatGenerate").disabled = true;
-    $("chatApply").disabled = true;
-    $("chatStatus").textContent = "Local model is drafting squad orders\u2026";
-    try {
-      let out;
-      if (typeof PhoneAI !== "undefined" && PhoneAI.available()) {
-        const id = ++phoneRequestId;
-        out = await new Promise((resolve, reject) => {
-          phoneRequests.set(id, { resolve, reject });
-          PhoneAI.compile("__SQUAD_CHAT__\n" + chatContext() + "\nConversation:\n" + chatHistory.slice(-2).map((x) => x.user.slice(0, 350) + "\n" + x.script.slice(0, 650)).join("\n") + "\nUser: " + input, id);
-          setTimeout(() => {
-            if (phoneRequests.has(id)) {
-              phoneRequests.delete(id);
-              reject(Error("Phone model timed out. Try a shorter request."));
-            }
-          }, 12e4);
-        });
-      } else {
-        const response = await fetch("/api/squad-chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: input, context: chatContext(), history: chatHistory.slice(-2) }), signal: AbortSignal.timeout(12e4) });
-        out = await response.json();
-        if (!response.ok || out.error) throw Error(out.error || "Local model unavailable");
-      }
-      if (out.error) throw Error(out.error);
-      const script = out.script;
-      if (typeof script !== "string") throw Error("The model did not return a squad script. Try a simpler request.");
-      const parsed = validateChatDraft(script);
-      chatDraft = script;
-      $("chatDraft").value = script;
-      $("chatApply").disabled = !!parsed.errors.length;
-      $("chatStatus").textContent = parsed.errors.length ? "Review required: " + parsed.errors.join(" \xB7 ") : out.model + " \xB7 " + parsed.rules.length + " validated orders. Review and Apply.";
-      chatHistory.push({ user: input, script });
-      chatHistory = chatHistory.slice(-3);
-    } catch (e) {
-      $("chatStatus").textContent = e.message;
-    } finally {
-      chatBusy = false;
-      $("chatGenerate").disabled = false;
+    const parsed = parseSquadScript(text), u = roster.find((u2) => u2.id === $("scriptTarget").value);
+    if (parsed.errors.length || u && !parsed.rules.length) {
+      $("scriptFeedback").textContent = parsed.errors.join(" \xB7 ") || "A unit needs at least one order.";
+      return;
     }
-  }
-  $("chatGenerate").onclick = draftSquadOrders;
-  $("chatDraft").oninput = () => {
-    chatDraft = $("chatDraft").value;
-    const parsed = validateChatDraft(chatDraft);
-    $("chatApply").disabled = !!parsed.errors.length;
-    $("chatStatus").textContent = parsed.errors.length ? parsed.errors.join(" \xB7 ") : "Script validated. Ready to Apply.";
-  };
-  $("chatApply").onclick = () => {
-    if (mode === "running" || mode === "won" || chatBusy || compiling) return;
-    const parsed = validateChatDraft($("chatDraft").value);
-    if (parsed.errors.length) return;
-    $("prompt").value = $("chatDraft").value;
-    compiledPlan = null;
-    compiledText = "";
-    saveProgram();
+    if (u) {
+      u.unitScript = text;
+      u.instruction = text;
+    } else {
+      campaign.orders = text;
+      squadScript = text;
+      $("prompt").value = text;
+    }
+    saveRoster();
+    resetPositions();
     preview();
-    $("chatStatus").textContent = "SquadScript applied. Deploy when ready.";
+    $("scriptFeedback").textContent = "Saved. Ready to deploy.";
   };
+  $("restoreScript").onclick = () => {
+    const u = roster.find((u2) => u2.id === $("scriptTarget").value);
+    $("pasteScript").value = u ? basicScript(u.type) : "";
+  };
+  const combining = combineUnits;
+  combineUnits = function(type, tier) {
+    const source = roster.find((u) => u.type === type && u.tier === tier && u.id === selectedId) || roster.find((u) => u.type === type && u.tier === tier);
+    if (!source) return;
+    const ids = new Set(roster.map((u) => u.id)), identity = { name: source.name, skin: source.skin, unitScript: source.unitScript, upgrades: { ...source.upgrades } };
+    combining(type, tier);
+    const up = roster.find((u) => !ids.has(u.id));
+    if (up) {
+      Object.assign(up, identity);
+      saveRoster();
+      resetPositions();
+      renderRoster();
+    }
+  };
+  renderRoster = function() {
+    const root = $("rosterGrid");
+    root.replaceChildren();
+    $("activeUnitLabel").textContent = roster.filter((u) => u.deployed !== false).length + " deployed \xB7 " + economy.credits + " credits \xB7 " + campaign.lives + " lives";
+    for (const u of roster) {
+      const card = document.createElement("div");
+      card.className = "unit-card" + (u.id === selectedId ? " active" : "");
+      const title = document.createElement("h3");
+      title.textContent = u.name;
+      const detail = document.createElement("p");
+      detail.textContent = unitTypes[u.type].name + " \xB7 " + "\u2605".repeat(u.tier) + " \xB7 " + unitStats(u).hp + " HP \xB7 " + capacityFor(u) + " orders";
+      card.append(title, detail);
+      for (const [label, act, disabled] of [["Select", () => activateUnit(u.id), false], [u.deployed === false ? "Deploy" : "Bench", () => {
+        u.deployed = u.deployed === false;
+        saveRoster();
+        resetPositions();
+        renderRoster();
+      }, false], ["Combine 3", () => combineUnits(u.type, u.tier), u.tier >= 3 || roster.filter((a2) => a2.type === u.type && a2.tier === u.tier).length < 3]]) {
+        const b2 = document.createElement("button");
+        b2.className = "tiny";
+        b2.textContent = label;
+        b2.disabled = disabled || mode === "running" || mode === "won";
+        b2.onclick = act;
+        card.append(b2);
+      }
+      root.append(card);
+    }
+  };
+  const originalArmory = renderLoadout;
+  renderLoadout = function() {
+    originalArmory();
+    $("renameUnit").value = selectedUnit().name;
+    const panel = $("cosmeticsPanel");
+    panel.replaceChildren();
+    const info = document.createElement("p");
+    info.textContent = campaign.cosmeticCoins + " tokens \xB7 Paint for " + selectedUnit().name;
+    panel.append(info);
+    for (const skin of ["olive", "arctic", "sunset", "neon"]) {
+      const b2 = document.createElement("button");
+      b2.className = "tiny";
+      const owned = campaign.skins.includes(skin);
+      b2.textContent = (selectedUnit().skin === skin ? "\u2713 " : "") + skin + (owned ? "" : " \xB7 3 tokens");
+      b2.disabled = mode === "running" || mode === "won" || !owned && campaign.cosmeticCoins < 3;
+      b2.onclick = () => {
+        if (mode === "running" || mode === "won") return;
+        if (!owned) {
+          campaign.cosmeticCoins -= 3;
+          campaign.skins.push(skin);
+        }
+        selectedUnit().skin = skin;
+        saveRoster();
+        resetPositions();
+        renderLoadout();
+      };
+      panel.append(b2);
+    }
+    const retire = document.createElement("button");
+    retire.className = "tiny";
+    retire.textContent = "Retire unit \xB7 " + Math.min(5, selectedUnit().wins || 0) + " tokens";
+    retire.disabled = roster.length <= 1 || mode === "running" || mode === "won";
+    retire.onclick = retireUnit;
+    panel.append(retire);
+  };
+  $("renameButton").onclick = () => {
+    if (mode === "running" || mode === "won") return;
+    const name = $("renameUnit").value.trim().slice(0, 28);
+    if (!name) return;
+    selectedUnit().name = name;
+    saveRoster();
+    resetPositions();
+    renderLoadout();
+    renderRoster();
+  };
+  const storeBeforeCatalog = renderStore;
+  renderStore = function() {
+    storeBeforeCatalog();
+    const root = $("storeCatalog");
+    root.replaceChildren();
+    for (const item of [...availableTypes().map((type) => ({ name: "Recruit " + unitTypes[type].name, price: 110 + Object.keys(unitTypes).indexOf(type) * 15, act: () => {
+      if (roster.length < economy.slots) roster.push(newUnit(type));
+      else economy.reserve[type] = (economy.reserve[type] || 0) + 1;
+    } })), ...gearItems.filter((g) => !campaign.gear.includes(g.id)).map((g) => ({ name: g.name + " \xB7 " + g.slot, price: g.price, act: () => campaign.gear.push(g.id) }))]) {
+      const b2 = document.createElement("button");
+      b2.className = "reward";
+      b2.textContent = item.name + " \xB7 " + item.price + " credits";
+      b2.disabled = economy.credits < item.price || mode === "running";
+      b2.onclick = () => {
+        if (mode === "running" || economy.credits < item.price) return;
+        economy.credits -= item.price;
+        item.act();
+        saveRoster();
+        renderStore();
+        renderRoster();
+        resetPositions();
+      };
+      root.append(b2);
+    }
+  };
+  const importing = safeImportedUnits;
+  safeImportedUnits = function(data) {
+    const units = importing(data);
+    for (let i = 0; i < units.length; i++) {
+      const original = data.units[i], u = units[i];
+      const text = original.unitScript || original.instruction;
+      if (typeof text === "string" && !parseSquadScript(text).errors.length && parseSquadScript(text).rules.length) u.unitScript = text;
+      u.name = String(original.name || u.name).slice(0, 28);
+      u.skin = ["olive", "arctic", "sunset", "neon"].includes(original.skin) ? original.skin : "olive";
+      u.upgrades = {};
+      for (const kind of permanentKinds) u.upgrades[kind] = Math.max(0, Math.min(20, Math.floor(Number(original.upgrades?.[kind]) || 0)));
+    }
+    return units;
+  };
+  const freshReset = resetRun;
+  resetRun = function() {
+    freshReset();
+    campaign.orders = "";
+    squadScript = "";
+    $("prompt").value = "";
+    saveRoster();
+    resetPositions();
+    preview();
+    renderRoster();
+    updateBuffStatus();
+  };
+  $("reset").onclick = () => resetRun();
+  matchSquad = function() {
+    saveProgram();
+    return roster.filter((u) => u.deployed !== false && (!unitTypes[u.type].water || campaign.map === "coast")).map((u) => ({ ...u, instruction: u.unitScript, squadScript: u.unitScript + (campaign.orders ? "\n" + campaign.orders : ""), compiled: null }));
+  };
+  let publicProfile = null;
+  try {
+    publicProfile = JSON.parse(localStorage.getItem("tank-online-profile-v1"));
+  } catch {
+  }
+  async function onlineAction(path) {
+    const response = await fetch("/api/matches/" + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ profile: publicProfile, name: $("commanderName").value.trim() || "Commander", units: matchSquad(), map: campaign.map }), signal: AbortSignal.timeout(15e3) }), data = await response.json();
+    if (data.profile) {
+      publicProfile = data.profile;
+      localStorage.setItem("tank-online-profile-v1", JSON.stringify(publicProfile));
+    }
+    if (!response.ok || data.error) throw Error(data.error);
+    return data;
+  }
+  $("publishDefense").onclick = async () => {
+    try {
+      $("multiplayerMessage").textContent = "Publishing defense\u2026";
+      const data = await onlineAction("profile");
+      $("multiplayerMessage").textContent = "Defense saved \xB7 Squad strength " + data.power + " \xB7 Other players can attack while you are offline.";
+    } catch (e) {
+      $("multiplayerMessage").textContent = e.message;
+    }
+  };
+  $("randomAttack").onclick = async () => {
+    if (mode === "running" || mode === "won") return;
+    try {
+      $("randomAttack").disabled = true;
+      const data = await onlineAction("random");
+      if (data.status === "empty") {
+        $("multiplayerMessage").textContent = "Defense saved. No player near your strength has published a defense on this map yet.";
+        return;
+      }
+      onlineSession = data;
+      localStorage.setItem("tank-match-v1", JSON.stringify(data));
+      await pollMatch();
+    } catch (e) {
+      $("multiplayerMessage").textContent = e.message;
+    } finally {
+      $("randomAttack").disabled = false;
+    }
+  };
+  $("leaderboardButton").onclick = async () => {
+    $("leaderboardDialog").showModal();
+    $("leaderboardRows").textContent = "Loading\u2026";
+    try {
+      const response = await fetch("/api/matches/leaderboard"), data = await response.json();
+      if (!response.ok || data.error) throw Error(data.error);
+      const root = $("leaderboardRows");
+      root.replaceChildren();
+      for (const [i, row] of data.players.entries()) {
+        const p = document.createElement("p");
+        p.textContent = i + 1 + ". " + row.name + " \xB7 " + row.wins + " wins / " + row.losses + " losses \xB7 Strength " + row.power;
+        root.append(p);
+      }
+      if (!data.players.length) root.textContent = "No published defenses yet. Publish yours in Multiplayer.";
+    } catch (e) {
+      $("leaderboardRows").textContent = e.message;
+    }
+  };
+  $("closeLeaderboard").onclick = () => $("leaderboardDialog").close();
+  saveProgram();
   const initial = selectedUnit();
   selectedId = initial.id;
   commands2 = new Set((initial.instruction ? initial.commands : unlocked(initial)).filter((c) => unlocked(initial).includes(c)));
-  if (initial.instruction) $("prompt").value = initial.instruction;
-  else $("prompt").value = "Keep moving, fire in range, and hold " + unitStats().range + " range.";
+  $("prompt").value = campaign.orders || "";
   saveRoster();
   renderRoster();
-  rewardOptions.push(
-    { instruction: "Sustain concentrated fire during reload cycles.", buff: "Overclocked loaders", effect: "Fire 35% faster next round.", kind: "reload" },
-    { instruction: "Push as a squad behind energy shields.", buff: "Shield airdrop", effect: "Every ally starts with 60 bonus shield next round.", kind: "shield" },
-    { instruction: "Concentrate fire into clustered targets and cover.", buff: "Demolition rounds", effect: "Shots splash nearby enemies and demolish cover next round.", kind: "explosive" },
-    { instruction: "Keep the squad alive while holding the firing line.", buff: "Medic drone support", effect: "Every ally repairs 2 extra HP per second next round.", kind: "repair" },
-    { instruction: "Focus vulnerable enemies with decisive precision fire.", buff: "Critical salvo", effect: "Gain 25 percentage points of critical chance next round.", kind: "critical" }
-  );
   window.arenaWorld = () => ({ W, H, buildings, pickups, battleUnits, shots, sparks, mode, elapsed, map: campaign.map, selectedId, worldRevision, skin: campaign.skin, base: onlinePlaying ? [] : campaign.base });
   const fallbackDraw = draw;
   draw = function() {
-    if (!window.webglArenaActive) fallbackDraw();
+    if (!window.webglArenaActive) {
+      ctx.save();
+      ctx.scale(canvas.width / W, canvas.height / H);
+      fallbackDraw();
+      ctx.restore();
+    }
   };
   commandRender();
   resetPositions();
@@ -2954,15 +3290,31 @@ function randomToken(bytes) {
 function squad(input, prefix) {
   if (!Array.isArray(input) || !input.length || input.length > 15) throw Error("Select 1\u201315 deployed units");
   return input.map((u, i) => {
-    if (!types.includes(u.type) || !Number.isInteger(u.tier) || u.tier < 1 || u.tier > 3 || typeof u.instruction !== "string" || u.instruction.length > 2e3) throw Error("Invalid unit data");
+    if (!types.includes(u.type) || !Number.isInteger(u.tier) || u.tier < 1 || u.tier > 3 || typeof u.instruction !== "string" || u.instruction.length > 3e3) throw Error("Invalid unit data");
     const gear = {};
     for (const slot of ["weapon", "armor", "utility"]) if (new RegExp("^" + slot + "-[0-9]$").test(u.equipment?.[slot] || "")) gear[slot] = u.equipment[slot];
     const allowed = commands.slice(0, u.tier === 1 ? 3 : u.tier === 2 ? 5 : 7);
     let compiled = null;
     const p = u.compiled;
     if (p && ["rush", "balanced", "sniper"].includes(p.style) && ["always", "inRange", "stationary"].includes(p.firePolicy)) compiled = { style: p.style, preferred: Math.max(100, Math.min(500, Number(p.preferred) || 255)), cover: allowed.includes("cover") && !!p.cover, evade: allowed.includes("duck") && !!p.evade, retreat: allowed.includes("retreat") && !!p.retreat, coverBelow: Math.max(0, Math.min(0.9, Number(p.coverBelow) || 0.5)), retreatBelow: Math.max(0, Math.min(0.8, Number(p.retreatBelow) || 0.25)), firePolicy: p.firePolicy, explanation: "" };
-    return { id: prefix + i, type: u.type, tier: u.tier, instruction: u.instruction, squadScript: typeof u.squadScript === "string" && u.squadScript.length <= 3e3 ? u.squadScript : "leader tank-1\nall focus nearest\nall follow leader", commands: Array.isArray(u.commands) ? u.commands.filter((c) => allowed.includes(c)) : allowed, equipment: gear, compiled, compiledText: u.instruction };
+    const upgrades = {};
+    for (const kind of ["armor", "speed", "damage", "loading", "shield", "demolition", "repair", "critical"]) upgrades[kind] = Math.max(0, Math.min(20, Math.floor(Number(u.upgrades?.[kind]) || 0)));
+    return { id: prefix + i, name: String(u.name || u.type).slice(0, 28), skin: ["olive", "arctic", "sunset", "neon"].includes(u.skin) ? u.skin : "olive", unitScript: typeof u.unitScript === "string" ? u.unitScript.slice(0, 3e3) : "all focus nearest\nall hold 255", upgrades, type: u.type, tier: u.tier, instruction: u.instruction, squadScript: typeof u.squadScript === "string" && u.squadScript.length <= 6001 ? u.squadScript : "all focus nearest\nall hold 255", commands: Array.isArray(u.commands) ? u.commands.filter((c) => allowed.includes(c)) : allowed, equipment: gear, compiled, compiledText: u.instruction };
   });
+}
+async function saveDefense(env, input) {
+  const units = squad(input.units, "def-"), map = ["urban", "canyon", "volcanic", "coast"].includes(input.map) ? input.map : "urban", name = String(input.name || "Commander").trim().slice(0, 28) || "Commander";
+  let id = input.profile?.id, token = input.profile?.token;
+  if (id) {
+    const row = await env.DB.prepare("SELECT token FROM arena_profiles WHERE id=?").bind(id).first();
+    if (!row || !token || row.token !== token) throw Error("Invalid player profile");
+  } else {
+    id = randomToken(12);
+    token = randomToken(24);
+  }
+  const power = Math.round(units.reduce((n, u) => n + 100 * (1 + 0.8 * (u.tier - 1)) + Object.keys(u.equipment).length * 12 + Object.values(u.upgrades).reduce((a, b) => a + b, 0) * 2, 0));
+  await env.DB.prepare("INSERT INTO arena_profiles (id,token,name,units,map,power,updated) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,units=excluded.units,map=excluded.map,power=excluded.power,updated=excluded.updated").bind(id, token, name, JSON.stringify(units), map, power, Date.now()).run();
+  return { profile: { id, token }, units, map, power };
 }
 var json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 var index_default = { async fetch(request, env) {
@@ -2972,11 +3324,24 @@ var index_default = { async fetch(request, env) {
     if (url.pathname === "/api/plan" || url.pathname === "/api/squad-chat") return json({ error: "Models run on your phone or computer. Open the installed Android app to compile." }, 503);
     if (!url.pathname.startsWith("/api/matches")) return env.ASSETS.fetch(request);
     if (!env.DB) return json({ error: "Match database unavailable" }, 503);
+    if (request.method === "GET" && url.pathname === "/api/matches/leaderboard") {
+      const result = await env.DB.prepare("SELECT p.name,p.power,(SELECT COUNT(*) FROM arena_results WHERE winner=p.id) AS wins,(SELECT COUNT(*) FROM arena_results WHERE loser=p.id) AS losses FROM arena_profiles p ORDER BY wins DESC,losses ASC,p.updated DESC LIMIT 30").all();
+      return json({ players: result.results });
+    }
     if (request.method === "POST") {
       if (Number(request.headers.get("content-length")) > 12e4) return json({ error: "Squad too large" }, 413);
       const raw = await request.text();
       if (raw.length > 12e4) return json({ error: "Squad too large" }, 413);
       const input = JSON.parse(raw);
+      if (url.pathname === "/api/matches/profile" || url.pathname === "/api/matches/random") {
+        const defense = await saveDefense(env, input);
+        if (url.pathname.endsWith("/profile")) return json({ profile: defense.profile, power: defense.power });
+        const candidates = await env.DB.prepare("SELECT id,units,map,power FROM arena_profiles WHERE id<>? AND map=? AND power BETWEEN ? AND ? ORDER BY ABS(power-?) LIMIT 20").bind(defense.profile.id, defense.map, defense.power * 0.65, defense.power * 1.35, defense.power).all();
+        if (!candidates.results.length) return json({ profile: defense.profile, status: "empty" });
+        const opponent = candidates.results[crypto.getRandomValues(new Uint32Array(1))[0] % candidates.results.length], code = randomToken(3).toUpperCase(), token = randomToken(24), seed = crypto.getRandomValues(new Uint32Array(1))[0], a = squad(input.units, "a-"), b = squad(JSON.parse(opponent.units), "b-"), engine = createEngine(a, b, defense.map, seed), now = Date.now();
+        await env.DB.prepare("INSERT INTO arena_matches (code,token_a,token_b,units_a,units_b,map,seed,state,updated,expires,revision,attacker,defender) VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?)").bind(code, token, randomToken(24), JSON.stringify(a), JSON.stringify(b), defense.map, seed, JSON.stringify(engine.state()), now, now + 9e5, defense.profile.id, opponent.id).run();
+        return json({ profile: defense.profile, code, token, status: "running", seat: 0 });
+      }
       if (url.pathname === "/api/matches/create") {
         const code = randomToken(3).toUpperCase(), token = randomToken(24), seed = crypto.getRandomValues(new Uint32Array(1))[0], map = ["urban", "canyon", "volcanic", "coast"].includes(input.map) ? input.map : "urban", units = squad(input.units, "a-"), now = Date.now();
         await env.DB.prepare("INSERT INTO arena_matches (code,token_a,units_a,map,seed,updated,expires,revision) VALUES (?,?,?,?,?,?,?,0)").bind(code, token, JSON.stringify(units), map, seed, now, now + 9e5).run();
@@ -3010,6 +3375,7 @@ var index_default = { async fetch(request, env) {
           state = JSON.parse(row.state);
         }
       }
+      if (state.mode !== "running" && row.attacker && row.defender) await env.DB.prepare("INSERT OR IGNORE INTO arena_results (code,winner,loser,completed) VALUES (?,?,?,?)").bind(code, state.mode === "won" ? row.attacker : row.defender, state.mode === "won" ? row.defender : row.attacker, Date.now()).run();
       return json({ code, seat, seed: row.seed, map: row.map, status: state.mode === "running" ? "running" : "finished", winner: state.mode === "won" ? 0 : 1, ...state });
     }
     return json({ error: "Unknown match action" }, 400);

@@ -1,16 +1,27 @@
 # SquadScript 2 function reference
 
-SquadScript is a custom language for coordinating a whole squad. The local Qwen chatbot translates natural-language requests into this language. The game interprets validated orders as data; scripts cannot run JavaScript, access files, or change combat rules.
+SquadScript is a custom language interpreted as data by the game. It cannot execute JavaScript or access files. The game has no built-in LLM or programming chat. Use any external LLM you prefer, or write scripts yourself.
 
-## Program with natural language
+## Copy, ask, paste
 
-1. Open **Squad programming chat** in the game.
-2. Describe a tactic, for example: “Keep my tank at sniper range. Have the medic heal infantry and rocket soldiers lock onto armored targets.”
-3. Tap **Generate squad orders**. Android uses Qwen2.5 on the phone; the USB game uses computer-local Qwen3.5. The hosted website has no hosted model.
-4. Review the generated script. Invalid output and drafts without any unit orders are shown with errors and cannot be applied. Edit the preview if needed.
-5. Tap **Apply reviewed script**, then deploy. Follow-up chat requests can refine a draft. A model draft never changes your active script until you apply it.
+1. Copy this whole reference using the webpage's Copy documentation button.
+2. Paste it into your chosen LLM and include your unit types, star tiers and desired tactics. Ask for plain script text without JSON or Markdown fences.
+3. Open **Paste scripts** in the game and select a unit or **Squad coordination**.
+4. Paste the result, then **Validate & save script**. Invalid lines never replace saved scripts.
+5. Deploy. Every unit starts with its own basic nearest-target/range script and has no automatic squad formation.
 
-The script editor works without an LLM. The older **Compile with local AI** button interprets a tactical stance; the programming chat creates actual squad orders.
+A unit script affects only that unit: **all** means that unit. Optional squad orders affect the whole team and run after unit scripts. Both share the unit's latest 3 / 5 / 7 active order slots. Saving a unit script does not change another unit's script. Renaming changes the display name, not its stable callsign. Each pasted script may contain up to 3000 characters.
+
+### Example request for your LLM
+
+Return only SquadScript. My team is tank-1 (two stars), infantry-1 (one star), and medic-1 (one star). Have infantry protect the tank and have the medic heal injured foot troops. Keep each unit within its order capacity. Do not include stat buffs or invented functions.
+
+### Basic unit script
+
+all focus nearest
+all hold 255
+
+The preferred range differs by type: tank 255, infantry 215, rocket 320, artillery 420, sniper 390, helicopter 290, boat 340, medic 180, engineer 195 and scout 245.
 
 ## Syntax, selectors and priority
 
@@ -34,7 +45,7 @@ Callsigns remain stable during a fight when units die. The dead unit disappears;
 | all follow leader | Follow the leader in formation. A callsign can replace leader. |
 | infantry protect tank-1 | Screen the specified ally and prioritize nearby threats. |
 | helicopter flank leader | Move around the leader's target. |
-| all focus nearest | Concentrate on the nearest enemy to the leader. |
+| all focus nearest | Independently attack the nearest enemy to this unit. Use focus leader for shared targeting. |
 | all focus weakest | Prioritize the lowest enemy health fraction. |
 | all focus leader | Reuse the leader's current target when available. |
 | all hold 360 | Preferred range, 100–500 units. |
@@ -199,4 +210,4 @@ The checkbox is off by default and saved on this device. When enabled, campaign 
 
 ## Limits and support actions
 
-The 50 additional functions have fixed effects, energy costs and cooldowns. Healing never revives a dead unit. Repair/supply and triage work within their documented radii. Weapon and armor modifiers combine with equipment; bonuses do not compound again every simulation tick. Generated scripts are limited to 3000 characters; chat messages to 1200 characters. Unknown functions and arbitrary code are rejected.
+The 50 additional functions have fixed effects, energy costs and cooldowns. Healing never revives a dead unit. Repair/supply and triage work within their documented radii. Weapon and armor modifiers combine with equipment; bonuses do not compound again every simulation tick. Unit and squad scripts each have a 3000-character limit. Permanent victory upgrades are separate saved stats and never added to scripts. Unknown functions and arbitrary code are rejected.

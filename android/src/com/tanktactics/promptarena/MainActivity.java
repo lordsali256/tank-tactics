@@ -20,7 +20,7 @@ public class MainActivity extends Activity {
   web.setWebViewClient(new WebViewClient(){
    @Override public boolean shouldOverrideUrlLoading(WebView view,WebResourceRequest request){
     String path=request.getUrl().getPath();
-    if("127.0.0.1".equals(request.getUrl().getHost())){loadPage(path!=null&&path.contains("play")?"play.html":"index.html");return true;}
+    if("127.0.0.1".equals(request.getUrl().getHost())){loadPage(path!=null&&path.contains("functions")?"functions.html":path!=null&&path.contains("play")?"play.html":"index.html");return true;}
     return true;
    }
   });

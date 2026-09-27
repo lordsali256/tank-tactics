@@ -1,50 +1,37 @@
-# Tank Tactics: Prompt Arena
+# Tank Tactics
 
-A playable Android and browser combined-arms roguelite inspired by Robocode.
+A combined-arms arena roguelite inspired by Robocode. Play on PC or Android. Every run starts with one tank against one AI tank with 120 HP. Hero units remain a future update.
 
-## Play
+## Play and scripts
 
-Open Tank Tactics on the phone, write a squad order script, tap **Compile with local AI**, review the interpreted plan, then deploy. Use **Squad & combine** to select, bench or upgrade units; **Armory** for equipment; **Store** to buy team slots. Each campaign victory grants a choice of three distinct recruits and a separate choice of three next-round doctrines. Three defeats end the run; equipment, purchased slots and currencies remain; each new run assembles a fresh squad from one tank. The previous test collection is archived for export.
+Deploy sits above the battlefield and stays accessible while scrolling. No model connection is required. Ten unit types unlock gradually, including helicopters at Round 6. AI damage is reduced 20%; enemy count grows every four rounds and tiers every eight.
 
-- Up to 15 simultaneous units across ten types: tanks, infantry, helicopters, rocket soldiers, artillery, snipers, coastal boats, medics, engineers and scout cars. Helicopters unlock at Round 6 with 70 base HP. AI weapon damage is reduced 20%, with one extra opponent every four rounds and tier growth every eight.
-- Infantry base speed reduced from 125 to 80.
-- Four maps with exactly 10× the previous battlefield area, up to 72 destructible buildings, rubble, and 8 initial ammo/health/overdrive/shield drops. Destroyed buildings have a 30% loot chance, capped at 10 unused drops. Bonus shields persist until damaged. Battles last at most 180 seconds. Rifle infantry damage against armored tanks is reduced by 88%; rockets remain antiarmor. There are 39 distinct displayed stats and 30 equipment choices.
-- Every run starts with one tank versus one AI tank. A shared script assigns leader, follow, protect, focus, hold range, flank and retreat orders. Three matching units combine, increasing order capacity from 3 to 5 to 7. SquadScript 2 adds 50 unique general/type functions and resource conditions; latest matching active orders take priority. No command-toggle section. Hero units are on the future-update board.
-- Drag equipment onto weapon/armor/utility slots or tap Equip. Retire a unit for at most five cosmetic tokens; four color schemes are available.
-- Latest-battle replay, collection import/export, and real Three.js WebGL 3D graphics. Procedural tracked tanks, soldiers, helicopters with animated rotors, artillery, snipers and boats. Squad follow camera, orbit/zoom, whole-map view and tappable minimap. The renderer ships offline in the APK.
-- Invite multiplayer uses an authoritative server and persistent match database. Two players submit squads, share a code, reconnect with saved session tokens and receive server-confirmed results. These test matches give no campaign rewards. Collections and imported progression are device-local, so this is not a ranked economy.
+Each unit has an independent basic nearest-target/range script. There is no in-game programming chatbot or stance compiler. Open **Paste scripts**, select an individual unit or the optional squad coordination script, paste plain SquadScript, then **Validate & save script**. Copy the complete reference at **Function documentation** to any external LLM you prefer. Invalid scripts cannot replace saved scripts. Unit scripts and squad orders share the latest 3/5/7 active command slots; squad orders run after unit orders. Default units do not follow/protect/concentrate fire automatically.
 
-## Free local models
+[Grouped function reference](docs/SQUADSCRIPT.md), also bundled as `functions.html`, explains every core command and 50 additional functions, conditions, selectors, priorities, examples and fixed costs/cooldowns. The reference page includes a full-text copy button and manual-copy fallback.
 
-Android uses **Qwen2.5-0.5B-Instruct Q4_K_M** through native llama.cpp, CPU only. The 491,400,032-byte model is installed on the test Pixel. Other Android installations offer a verified download button. SHA-256: `74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db`.
+Victory offers three recruit choices and three permanent upgrade choices. Select the unit to receive the upgrade. Permanent bonuses are smaller (+2% damage/speed, +1% resistance, etc.), capped at twenty purchases per category, and never added to scripts. Maxed choices grant thirty credits. Bonuses stay with that unit across rounds and combining; a new run assembles a new squad. Gear, slots, currencies and field bases persist across runs.
 
-Model source: https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF (Apache 2.0). Native inference uses four CPU threads, 2048 context tokens and at most 230 generated tokens. It runs before combat, not every frame. The model can misinterpret instructions; inspect the plan before deploying. Local AI also generates a reward tactic when available. Preset tactics and a clearly labeled rule parser remain usable without a model.
+The store sells slots, unlocked recruits, weapons, armor and utility equipment. Each unit has its own name, script, equipment, cosmetic paint and upgrades. Combining preserves the selected unit's identity. Retiring awards at most five cosmetic tokens. Collection import/export and latest-battle replays are available.
 
-Computer testing optionally uses **qwen3.5:4b** in Ollama via the loopback bridge on port 8878. `local/start-phone-test.ps1` starts the bridge and USB forwarding. The hosted site does not send prompts to ChatGPT or a hosted AI provider. Its multiplayer accessibility follows the site's existing private sharing settings.
+## Graphics and combat
+
+Three.js WebGL 3D ships offline in the APK. Four maps cover ten times the original arena area. Four building styles have varied roofs, stepped towers and industrial details. Destroyed buildings break into four or five animated chunks, then remain as rubble. A projected compatibility renderer allows campaign play when WebGL is unavailable.
+
+Eight initial pickups, thirty-percent building loot and a ten-unused-drop cap keep the battlefield readable. Health, ammo, shield and overdrive affect actual combat and have visible feedback. Dead unit meshes disappear. Infantry rifles are weak against armored tanks; dedicated rocket troops retain antiarmor damage. Thirty-nine distinct stats are shown in Unit stats.
+
+## Multiplayer and leaderboard
+
+Publish a defense in Multiplayer, then attack a random real player's saved defense on the same map within 35% of your squad strength. Defenders can be offline. When no eligible player exists, the game saves your defense and reports the empty pool. Invite matches remain available.
+
+The server controls combat and records wins/losses once per random match. A leaderboard lists published player defenses ordered by wins, losses and last update. Profile edit tokens never appear in leaderboard output. Sessions expire after fifteen minutes. Local collections and imported progression are trusted prototype data, so this is not a competitive ranked economy. Internet play follows the Site's existing sharing settings. Android multiplayer uses the local bridge over USB; campaign and bundled documentation work offline.
 
 ## Build and test
 
-`npm run build` generates a Cloudflare-compatible bundled Worker and client assets. `node local/combat.test.mjs`, `node local/arena.test.mjs`, `node local/squad-language.test.mjs`, `node local/matches.test.mjs` and `node local/cloud.test.mjs` verify deterministic combat, command tiers, separate rewards, slot purchases, gear effects, import validation, retirement caps, lives and match/session/database rules. Drizzle schema migrations live in `drizzle/`; append migrations rather than changing deployed history.
+`node local/build-function-docs.mjs` generates Markdown and the documentation webpage. `npm run build` bundles the renderer, unit script workshop, Worker and client pages. Drizzle migrations are append-only under `drizzle/`.
 
-`android/build.ps1` requires JDK 17, Android platform/build-tools 36 and the native library at `android/build/native/libtank_ai.so`. The output is `android/build/TankTactics-debug.apk`, a debug-signed ARM64 test APK. It bundles the game and library; model data is stored in private app files separately and survives app updates. Internet permission supports model download and USB tests.
+Run `npm test`, `node local/arena.test.mjs`, `node local/squad-language.test.mjs`, `node local/workshop.test.mjs`, `node local/cloud.test.mjs`, and `npm run test:matches` (with the local bridge running). Tests cover actual combat, script effects, independent units, HTML control IDs, permanent upgrades, store transactions, persistent defenses, nearby-strength pairing, profile authorization and idempotent scores.
 
-Native dependencies under `%LOCALAPPDATA%/TankTactics`: NDK 27.2.12479018, CMake 3.22.1, llama.cpp commit `95887577ab5fead779581a7030a83c7752ff3234`. Configure `android/native` with the Android toolchain, ARM64 ABI, Android 26, `ANDROID_STL=c++_static`, `ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON`, and `LLAMA_SOURCE` pointing at that checkout. Build target `tank_ai`. The shared library and APK use 16 KB alignment. Upstream license notices are included under `android/native` and in APK assets.
+`android/build.ps1` requires JDK 17 and Android build-tools 36. It builds `android/build/TankTactics-debug.apk`, an ARM64 debug test APK. The game and function guide ship as bundled pages. The previous llama.cpp library/model infrastructure remains in the development package but is not used by the game; there is no automatic model request or download. Existing phone model files survive updates.
 
-## Squad order example
-
-```text
-leader tank-1
-all focus nearest
-all follow leader
-infantry protect leader
-sniper hold 360
-helicopter flank leader
-```
-
-Use one order per line. Selectors are `all`, unit types, or callsigns such as `tank-1`. Later matching orders override earlier settings, within each unit’s order capacity. Unknown lines prevent deployment. Comments begin with `#`. Leaders switch to a surviving ally when lost. Retiring and combining units remain separate actions.
-
-Field bases are campaign structures: build repair stations, ammo depots and cover walls in three fixed rear areas, then upgrade them with credits. They persist across runs and are recorded in campaign replays. Invite matches exclude field-base bonuses.
-
-## SquadScript programming chat
-
-[Full grouped function reference](docs/SQUADSCRIPT.md) documents every core order and 50 additional functions, unit unlocks, powerups and Auto Restart Level. The in-game function guide groups General and unique functions per unit. Local Qwen drafts actual validated scripts from natural language; review/edit and Apply before deploying. On-phone chat uses a 4096-token context and at most 400 output tokens; tactical stance compilation retains 2048/230. Auto Restart retries campaign defeats after three seconds while lives remain, and is disabled for replays/online matches.
+`local/bridge.mjs` serves the game on loopback port 8878. The match database persists under `%LOCALAPPDATA%/TankTactics/arena.sqlite`. Existing local model endpoints are retained as development tools and are not connected to game UI.

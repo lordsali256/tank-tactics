@@ -7,7 +7,7 @@ function simulate(instruction,modelPlan=null){
  const document={getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id)},createElement:element,querySelectorAll(){return []}};
  document.getElementById('arena').width=920;document.getElementById('arena').height=560;document.getElementById('arena').getContext=()=>({});document.getElementById('prompt').value=instruction;
  const context=vm.createContext({document,localStorage:{getItem:()=>null,setItem(){},removeItem(){}},window:{},setTimeout,clearTimeout,performance:{now:()=>0},requestAnimationFrame(){},AbortSignal,fetch:async()=>{throw Error('test')},Math,console,confirm:()=>true});vm.runInContext(script,context);
- document.getElementById('prompt').value='leader tank-1\nall stance '+(/snip/i.test(instruction)?'sniper':'rush')+'\nall focus nearest';vm.runInContext('preview()',context);
+ document.getElementById('prompt').value='leader tank-1\nall stance '+(/snip/i.test(instruction)?'sniper':'rush')+'\nall focus nearest';vm.runInContext('saveProgram();preview()',context);
  vm.runInContext(String.raw`
  if(roster.length!==1||roster[0].type!=='tank'||battleUnits.length!==2)throw Error('Run must start 1 tank vs 1 tank');if(enemy.hp!==120||enemy.maxHp!==120||player.hp!==160||!enemy.aiControlled||player.aiControlled)throw Error('Round 1 AI must have 120 HP and independent controls');mode='running';for(let n=0;n<180;n++)update(1/60);if(Math.abs(player.y-enemy.y)<10)throw Error('AI approach must differ from player movement');mode='ready';resetPositions();roster.push(newUnit('infantry'),newUnit('infantry'),newUnit('infantry'));economy.slots=12;activateUnit(roster.find(u=>u.type==='infantry').id);const before=roster.length;combineUnits('infantry',1);
  if(roster.length!==before-2||roster.filter(u=>u.type==='infantry'&&u.tier===2).length!==1)throw Error('Combine must consume exactly three matches');
@@ -19,7 +19,7 @@ function simulate(instruction,modelPlan=null){
  mode='running';finish(true);levelReward.offerTypes=['sniper','infantry','tank'];const recruitCount=roster.length;chooseReward({unitType:'sniper',action:'add'});if(roster.length!==recruitCount+1||round!==1||nextBuff!==null)throw Error('Recruit reward failed');
  chooseReward({unitType:'sniper',action:'add'});if(roster.length!==recruitCount+1)throw Error('Duplicate reward claim');
  completeLevelRewards();if(round!==1)throw Error('Must claim both reward pools');
- const boon=levelReward.tacticOptions[0];chooseReward(boon);completeLevelRewards();if(round!==2||nextBuff!==boon)throw Error('Independent tactic pool failed');
+ const boon=levelReward.tacticOptions[0];chooseReward(boon);completeLevelRewards();if(round!==2||nextBuff!==null||selectedUnit().upgrades[boon.kind]!==1)throw Error('Independent tactic pool failed');
  economy.credits=1000;const credits=economy.credits,cost=slotCost(),slots=economy.slots;buySlot();if(economy.slots!==slots+1||economy.credits!==credits-cost)throw Error('Slot purchase failed');
  while(roster.length<economy.slots)roster.push(newUnit('sniper'));mode='running';finish(true);levelReward.offerTypes=['tank','sniper','artillery'];const full=roster.length;chooseReward({unitType:'tank',action:'add'});if(roster.length!==full||economy.reserve.tank!==1)throw Error('Full team must reserve reward');
  chooseReward(levelReward.tacticOptions[1]);completeLevelRewards();combineUnits('sniper',1);claimReserve('tank');if(economy.reserve.tank!==0||roster.length!==full-1)throw Error('Reserve claim failed');
@@ -33,9 +33,9 @@ function simulate(instruction,modelPlan=null){
  mode='ready';campaign.base=[];economy.credits=1000;buildBase(0,'repair');const support=battleUnits.find(t=>t.team==='player');support.x=150;support.y=80;support.hp=100;fieldBaseSupport(support,1);if(support.hp!==102)throw Error('Base repairs must heal');buildBase(1,'ammo');const supplied=battleUnits.find(t=>t.team==='player');supplied.x=150;supplied.y=230;supplied.reserve=50;fieldBaseSupport(supplied,1);if(supplied.reserve!==58)throw Error('Ammo depot must supply reserve');buildBase(2,'wall');const width=rocks.at(-1).w;upgradeBase(2);if(rocks.at(-1).w<=width)throw Error('Wall upgrade must improve screen');campaign.base=[];resetPositions();
  `,context);
  document.getElementById('prompt').value='leader tank-1\nall stance '+(/snip/i.test(instruction)?'sniper':'rush')+'\nall focus nearest';vm.runInContext('preview()',context);
- if(modelPlan)vm.runInContext('compiledPlan='+JSON.stringify(modelPlan)+';compiledText=$("prompt").value;',context);
+ if(modelPlan)vm.runInContext("selectedUnit().tier=3;selectedUnit().unitScript='all hold 400\\nall retreat below 30%';campaign.orders='';$('prompt').value='';",context);
  vm.runInContext('deploy();for(let n=0;n<10801&&mode==="running";n++)update(1/60);',context);
- return JSON.parse(vm.runInContext('JSON.stringify({events:damageEvents.length,mode,hp:player.hp,enemyHp:enemy.hp,x:player.x,y:player.y,ammo:player.ammo,plan})',context));
+ return JSON.parse(vm.runInContext('JSON.stringify({events:damageEvents.length,mode,hp:player.hp,enemyHp:enemy.hp,x:player.x,y:player.y,ammo:player.ammo,plan:player.plan})',context));
 }
 const rush=simulate('Rush the enemy and fire aggressively.'),sniper=simulate('Keep distance and aim like a sniper.');
 assert.deepEqual(rush,simulate('Rush the enemy and fire aggressively.'),'same seed must replay the same battle');

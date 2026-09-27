@@ -14,10 +14,10 @@ const round2=arena();round2(`round=2;resetPositions();mode='running';finish=func
 assert.equal(round2('enemy.type'),'infantry');assert.equal(round2('mode'),'won');assert.ok(round2('player.hp')>80);
 // Armor protects tanks from rifle fire, while dedicated rockets retain damage.
 run(`mode='ready';resetPositions();player.hp=160;takeHit(player,{sourceType:'infantry',damage:30,penetration:0,owner:'rifle'});const rifleLoss=160-player.hp;player.hp=160;takeHit(player,{sourceType:'rocket',damage:30,penetration:0,owner:'rocket'});if((160-player.hp)<rifleLoss*7)throw Error('Rockets must retain antiarmor damage');`);
-// Doctrines alter gameplay and last only one round.
-run(`mode='ready';nextBuff=rewardOptions.find(o=>o.kind==='shield');deploy();if(player.shield!==60)throw Error('Shield doctrine must apply on deployment');mode='running';finish(true);if(activeBuff!==null)throw Error('Doctrine must expire after combat');mode='ready';activeBuff=rewardOptions.find(o=>o.kind==='repair');resetPositions();mode='running';player.hp=80;squadTick(player,1);if(player.hp<82)throw Error('Medic doctrine must heal');`);
+// Permanent rewards never modify scripts and persist between deployments.
+run(`mode='running';finish(true);const priorScript=selectedUnit().unitScript;const upgrade=levelReward.tacticOptions[0];const base=unitStats();chooseReward(upgrade);if(selectedUnit().unitScript!==priorScript||nextBuff!==null||selectedUnit().upgrades[upgrade.kind]!==1)throw Error('Permanent reward corrupted script');mode='ready';deploy();if(nextBuff!==null||activeBuff!==null)throw Error('Round buff remains active');`);
 const unit=(id,type)=>({id,type,tier:1,commands:['radar','gun','drive'],instruction:'leader tank-1\nall focus nearest',squadScript:'leader tank-1\nall focus nearest',equipment:{}});
 const engine=createEngine([unit('a','tank')],[unit('b','infantry')],'urban',15);
 let state=engine.state();state.buildings[0].hp=0;state.buildings[0].destroyed=true;state.pickups[0].used=true;
 const restored=createEngine([unit('a','tank')],[unit('b','infantry')],'urban',15,state);restored.tick(.1);state=restored.state();assert.equal(state.buildings[0].destroyed,true);assert.equal(state.pickups[0].used,true);assert.ok(state.battleUnits[1].x>2000);
-console.log('Expanded arena: 10× area, 3+3 reward choices, Round 2 tank victory, armor roles, destructible cover, four drops, doctrines and multiplayer restoration passed.');
+console.log('Expanded arena: 10× area, 3+3 reward choices, Round 2 tank victory, armor roles, destructible cover, four pickup types, permanent rewards and multiplayer restoration passed.');

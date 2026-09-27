@@ -3,7 +3,7 @@ import {build} from 'esbuild';
 fs.mkdirSync('dist/server',{recursive:true});
 const renderer=await build({entryPoints:['client/arena-3d.js'],bundle:true,format:'iife',platform:'browser',minify:true,write:false});
 let page=fs.readFileSync('dist/play.html','utf8').replace(/\n<!-- WEBGL_RENDERER -->[\s\S]*?<!-- END_WEBGL_RENDERER -->/,'');
-const language=fs.readFileSync('client/squad-language.js','utf8');
+const language=fs.readFileSync('client/squad-language.js','utf8')+'\n'+fs.readFileSync('client/script-workshop.js','utf8');
 page=page.replace(/\/\/ SQUAD_LANGUAGE_START[\s\S]*?\/\/ SQUAD_LANGUAGE_END\n?/,'');
 page=page.replace('const initial=selectedUnit();',()=> '// SQUAD_LANGUAGE_START\n'+language+'\n// SQUAD_LANGUAGE_END\nconst initial=selectedUnit();');
 page=page.replace('</body>', ()=> '\n<!-- WEBGL_RENDERER -->\n<script>'+renderer.outputFiles[0].text.replace(/<\/script/gi,'<\\/script')+'</script>\n<!-- END_WEBGL_RENDERER -->\n</body>');
@@ -23,5 +23,5 @@ fs.copyFileSync('cloud/worker.mjs','dist/server/index.js');
 const bundled=await build({entryPoints:['dist/server/index.js'],bundle:true,format:'esm',platform:'browser',write:false});
 fs.writeFileSync('dist/server/index.js',bundled.outputFiles[0].contents);
 fs.mkdirSync('dist/client',{recursive:true});
-for(const file of ['index.html','play.html'])fs.copyFileSync('dist/'+file,'dist/client/'+file);
+for(const file of ['index.html','play.html','functions.html'])fs.copyFileSync('dist/'+file,'dist/client/'+file);
 
