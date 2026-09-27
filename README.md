@@ -14,6 +14,8 @@ Campaign progress, scripts and coach preferences live in each browser's local st
 
 The server CPU could not complete full-guide coach requests within five minutes, so the default now uses the PC model through the tunnel. The game shows the model location in its settings. Coaching stays off by default; copy/paste scripts and gameplay work without it. Provider protocol tests passed with test responses, but no paid provider account has been exercised.
 
+Verified through the Docker coach endpoint: the PC's Qwen2.5-Coder 7B returned a validated battle analysis in 13 seconds with the complete 24,943-character guide. It elected to keep the fixture's scripts unchanged. The current user's Windows startup shortcut reconnects the private tunnel automatically.
+
 ## Play and scripts
 
 Deploy sits above the battlefield and stays accessible while scrolling. No model connection is required. Ten unit types unlock gradually, including helicopters at Round 6. AI damage is reduced 20%; enemy count grows every four rounds and tiers every eight.
