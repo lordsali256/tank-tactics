@@ -8,7 +8,7 @@ After victory or defeat, a result screen shows the outcome, duration and points.
 
 Hover over units on PC or tap their model/name on a phone for stats. Collection import/export is hidden and remains a future update.
 
-**Optional LLM coach** is available when playing through the local bridge. Select local Ollama, Google AI Studio (Gemini API), OpenAI (Responses API), or another compatible chat API. Enter an endpoint and model, optionally a provider key, then explicitly enable sending battle reports. Nothing is sent by default. Opt-in resets when the page reloads; endpoint/model preferences persist, but keys remain only in memory. HTTP is restricted to loopback; remote providers require HTTPS. Ollama runs on this computer. The default is Qwen2.5-Coder 7B, verified locally with a real battle-report fixture.
+**Optional LLM coach** is available when playing through the local bridge. Select local Ollama, Google AI Studio (Gemini API), OpenAI (Responses API), or another compatible chat API. Enter an endpoint and model, optionally a provider key, then explicitly enable sending battle reports. Nothing is sent by default. Opt-in resets when the page reloads; endpoint/model preferences persist, but keys remain only in memory. HTTP is restricted to loopback; remote providers require HTTPS. For the Docker game, Ollama runs on your PC through a private SSH tunnel. Keep your PC and Ollama running; the settings show the current model location. The default is Qwen2.5-Coder 7B, verified locally with a real battle-report fixture.
 
 The coach receives the grouped function reference, owned units' scripts/types/tiers, optional squad script, and the last battle report: map, round, outcome, duration, shots, damage dealt/taken, hit events, kills, survival, remaining ammo/health and collected pickups. It does not receive your API key as prompt text. Your chosen hosted provider may charge for requests; its normal privacy terms apply. No provider requests happen until opt-in.
 
@@ -17,14 +17,14 @@ Analysis starts automatically at the end of each campaign battle while enabled. 
 Valid drafts can be applied manually. **Automatically apply valid scripts** is a separate opt-in. The interpreter validates every returned unit script and optional squad script before any changes; unknown units or invalid actions reject the whole draft. Changing an analyzed unit’s scripts, combining it away, or resetting a run during analysis makes the reply stale. Adding a recruit does not invalidate the surviving units’ draft; new recruits use their starter script until the next analysis. The coach cannot award units, credits, upgrades or equipment. A failed request leaves existing scripts intact. Local Ollama gets one retry for temporary startup errors and stays loaded for fifteen minutes after a request. Hosted requests are not retried automatically. Multiplayer combat and accounts remain server-controlled; the coach is a campaign feature.
 
 ## Points and leaderboard
-+
-+Each battle awards 100 points for victory or 20 for defeat, plus 25 for each defeated enemy and 10 for each surviving friendly unit. Practice score is local and shown on the result screen and battlefield. Online leaderboard points come only from authoritative server matches, are recorded once per match and sort highest first. Previous recorded online results start at 100 points per win and 20 per loss because old combat bonuses were not retained. Local practice scores cannot be submitted to the online leaderboard.
-+
-+## ChatGPT and AI Studio web chats
-+
-+Use **Copy battle + full guide for web chatbot** to copy the reference, report and current unit scripts. Paste the brief into the website you choose, then paste its Python into Scripts. Web-chat subscriptions/logins are separate from automatic API connections. For automatic Gemini/OpenAI coaching, select the provider, enter a model ID available to your API account and a session-only API key, then opt in. Google uses generateContent with structured JSON; OpenAI uses Responses with a strict schema and store:false. Native provider protocols are tested with fixtures; paid accounts are not contacted during development.
-+
-+## Ask your LLM
+
+Each battle awards 100 points for victory or 20 for defeat, plus 25 for each defeated enemy and 10 for each surviving friendly unit. Practice score is local and shown on the result screen and battlefield. Online leaderboard points come only from authoritative server matches, are recorded once per match and sort highest first. Previous recorded online results start at 100 points per win and 20 per loss because old combat bonuses were not retained. Local practice scores cannot be submitted to the online leaderboard.
+
+## ChatGPT and AI Studio web chats
+
+Use **Copy battle + full guide for web chatbot** to copy the reference, report and current unit scripts. Paste the brief into the website you choose, then paste its Python into Scripts. Web-chat subscriptions/logins are separate from automatic API connections. For automatic Gemini/OpenAI coaching, select the provider, enter a model ID available to your API account and a session-only API key, then opt in. Google uses generateContent with structured JSON; OpenAI uses Responses with a strict schema and store:false. Native provider protocols are tested with fixtures; paid accounts are not contacted during development.
+
+## Ask your LLM
 
 Return only a Python script defining tick(unit, squad), using this game's documented subset. No imports, loops, Markdown fences, resource changes or invented APIs. My tank should protect medic-1, conserve ammunition, and seek cover below 40% health. My tank is two stars, so keep active orders within five slots. Explain any tradeoff separately.
 
@@ -157,3 +157,7 @@ def tick(unit, squad):
 Start with two calls and add one condition at a time. Watch health, ammo and action feedback. If a script seems ignored, check the unit type, missing ally, inactive condition, energy, cooldown and latest-order capacity. A stationary call can be replaced by later movement, emergency retreat or cover. Special abilities consume fixed energy and use cooldowns. Read each action description below. Scripts do not guarantee victory.
 
 Online play starts with one verified tank and zero credits. Wins earn 60 server credits and losses 15, once per completed match. Use **Menu → Store → Protected online armory** to buy online slots, recruits and equipment, and edit verified unit or squad scripts. Practice purchases do not transfer online. Never share your saved online profile token.
+
+## Infantry squad and artillery models
+
+An infantry unit contains four smaller rifle soldiers. It still counts as one unit and uses one script and shared health. Each rifle deals one quarter of the listed squad damage; four shots form one volley and consume one squad ammo charge. Damage, spread and critical hits are computed for each shot. Artillery has a barrel elevated 72 degrees above horizontal and retains indirect fire.

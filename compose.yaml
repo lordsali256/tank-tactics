@@ -7,7 +7,9 @@ services:
       TANK_PUBLIC_ORIGIN: http://192.168.1.10:8878
       TANK_BIND_HOST: 192.168.1.10
       TANK_DATA_DIR: /data
-      TANK_COACH_MODEL: qwen2.5-coder:1.5b
+      TANK_COACH_MODEL: qwen2.5-coder:7b
+      TANK_OLLAMA_ENDPOINT: http://127.0.0.1:11435/api/chat
+      TANK_OLLAMA_LOCATION: Your PC through a private SSH tunnel
     network_mode: host
     volumes:
       - ./data:/data
@@ -19,6 +21,7 @@ services:
       timeout: 5s
       retries: 3
   ollama:
+    profiles: [server-ai]
     image: ollama/ollama:latest
     container_name: tank-tactics-ollama
     restart: unless-stopped

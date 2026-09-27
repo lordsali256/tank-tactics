@@ -1355,12 +1355,14 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     return candidates.sort((a2, b2) => Math.hypot(a2.x - t.x, a2.y - t.y) - Math.hypot(b2.x - t.x, b2.y - t.y))[0] || null;
   }
   function squadFire(t, target) {
-    const s = t.stats, p = t.plan, spread = 1 / s.accuracy * (t.commands.includes("perch") ? 0.5 : 1), a2 = t.angle + (random() - 0.5) * spread, crit = random() < s.critChance + (t.team === "player" && activeBuff?.kind === "critical" ? 0.25 : 0);
+    const s = t.stats, p = t.plan, spread = 1 / s.accuracy * (t.commands.includes("perch") ? 0.5 : 1), formation = t.type === "infantry" ? [[-10, -10], [10, -10], [-10, 10], [10, 10]] : [[0, 0]];
     t.ammo--;
     t.heat += s.heatPerShot;
     if (!t.ammo) t.reloading = s.magazineCapacity / s.loadingSpeed + s.reloadDelay;
-    const damage = s.damage * (crit ? s.critMultiplier : 1) * (t.team === "player" && activeBuff?.kind === "damage" ? 1.2 : 1);
-    shots.push({ team: t.team, owner: t.id, sourceType: t.type, x: t.x + Math.cos(a2) * (t.r + 5), y: t.y + Math.sin(a2) * (t.r + 5), vx: Math.cos(a2) * s.projectileSpeed, vy: Math.sin(a2) * s.projectileSpeed, damage, life: 2.5, indirect: s.indirect || s.flying, radius: s.explosionRadius + (t.team === "player" && activeBuff?.kind === "explosive" ? 50 : 0), penetration: s.penetration, crit });
+    for (const [ox, oy] of formation) {
+      const a2 = t.angle + (random() - 0.5) * spread, crit = random() < s.critChance + (t.team === "player" && activeBuff?.kind === "critical" ? 0.25 : 0), damage = s.damage / formation.length * (crit ? s.critMultiplier : 1) * (t.team === "player" && activeBuff?.kind === "damage" ? 1.2 : 1), x = t.x + ox * Math.cos(t.heading) - oy * Math.sin(t.heading), y = t.y + ox * Math.sin(t.heading) + oy * Math.cos(t.heading), muzzle = t.type === "infantry" ? 18 : t.r + 5;
+      shots.push({ team: t.team, owner: t.id, sourceType: t.type, x: x + Math.cos(a2) * muzzle, y: y + Math.sin(a2) * muzzle, vx: Math.cos(a2) * s.projectileSpeed, vy: Math.sin(a2) * s.projectileSpeed, damage, life: 2.5, indirect: s.indirect || s.flying, radius: s.explosionRadius + (t.team === "player" && activeBuff?.kind === "explosive" ? 50 : 0), penetration: s.penetration, crit });
+    }
     t.cooldown = s.reload * (p.style === "rush" ? 0.85 : 1) * (t.powerTime > 0 ? 0.65 : 1) * (t.team === "player" && activeBuff?.kind === "reload" ? 0.65 : 1);
   }
   function squadTick(t, dt) {
@@ -1700,7 +1702,22 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     for (const t of [...battleUnits].sort((a2, b2) => a2.y - b2.y)) {
       if (t.hp <= 0) continue;
       const color = t.team === "player" ? { olive: "#b9e66b", arctic: "#cdefff", sunset: "#efaa72", neon: "#b98bea" }[campaign.skin] : "#d69067";
-      prism(t.x - t.r, t.y - t.r, t.r * 2, t.r * 2, t.stats.flying ? 80 : 25, color);
+      if (t.type === "infantry") {
+        for (const [ox, oy] of [[-10, -10], [10, -10], [-10, 10], [10, 10]]) {
+          const x = t.x + ox * Math.cos(t.heading) - oy * Math.sin(t.heading), y = t.y + ox * Math.sin(t.heading) + oy * Math.cos(t.heading);
+          prism(x - 4, y - 4, 8, 8, 24, color);
+          const a2 = project3D(x, y, 20), b2 = project3D(x + Math.cos(t.angle) * 16, y + Math.sin(t.angle) * 16, 20);
+          ctx.strokeStyle = "#dce4db";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(...a2);
+          ctx.lineTo(...b2);
+          ctx.stroke();
+        }
+      } else {
+        prism(t.x - t.r, t.y - t.r, t.r * 2, t.r * 2, t.stats.flying ? 80 : 25, color);
+        if (t.type === "artillery") prism(t.x + 5, t.y - 3, 7, 7, 70, "#9caeac");
+      }
       const p = project3D(t.x, t.y, t.stats.flying ? 100 : 40);
       ctx.fillStyle = color;
       ctx.font = "bold 10px sans-serif";
@@ -4132,7 +4149,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   function collectBattleReport(win) {
     return { version: 1, round, map: campaign.map, result: win ? "victory" : "defeat", durationSeconds: Math.round(elapsed * 10) / 10, units: battleUnits.map((t) => ({ id: t.id, side: t.team, type: t.type, tier: t.tier, callsign: callsign(t), survived: t.hp > 0, remainingHealth: Math.ceil(t.hp), maximumHealth: t.maxHp, shotsFired: t.reportShots || 0, damageDealt: Math.round(t.reportDamageDealt || 0), damageTaken: Math.round(t.reportDamageTaken || 0), hitEvents: t.reportHits || 0, kills: t.reportKills || 0, reserveAmmo: t.reserve, magazineAmmo: t.ammo, pickups: t.reportPickups || {} })) };
   }
-  let coachSettings = { provider: "ollama", endpoint: "http://127.0.0.1:11434/api/chat", model: "qwen2.5-coder:1.5b", enabled: false, autoApply: false }, coachApiKey = "";
+  let coachSettings = { provider: "ollama", endpoint: "http://127.0.0.1:11434/api/chat", model: "qwen2.5-coder:7b", enabled: false, autoApply: false }, coachApiKey = "";
   try {
     const saved = JSON.parse(localStorage.getItem("tank-coach-preferences"));
     if (saved) coachSettings = { ...coachSettings, ...saved, enabled: false, autoApply: false };
@@ -4442,7 +4459,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     if (coachSettings.enabled && lastBattleReport && coachAttemptedReport !== lastBattleReport) requestCoach();
   };
   $("coachProvider").onchange = () => {
-    const presets = { ollama: ["http://127.0.0.1:11434/api/chat", "qwen2.5-coder:1.5b"], gemini: ["https://generativelanguage.googleapis.com/v1beta", ""], openai: ["https://api.openai.com/v1/responses", ""], compatible: ["", ""] };
+    const presets = { ollama: [defaultLocalEndpoint, defaultLocalModel], gemini: ["https://generativelanguage.googleapis.com/v1beta", ""], openai: ["https://api.openai.com/v1/responses", ""], compatible: ["", ""] };
     const [endpoint, model] = presets[$("coachProvider").value];
     $("coachEndpoint").value = endpoint;
     $("coachModel").value = model;
@@ -4593,6 +4610,18 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     }
     campaignResultContinue();
   };
+  let defaultLocalEndpoint = "http://127.0.0.1:11434/api/chat", defaultLocalModel = "qwen2.5-coder:7b";
+  fetch("/api/coach/config").then((r) => r.ok ? r.json() : null).then((config) => {
+    if (!config) return;
+    defaultLocalEndpoint = config.endpoint;
+    defaultLocalModel = config.model;
+    if ($("coachConnectionNote")) $("coachConnectionNote").textContent = config.location + ". Keep that computer and Ollama running. Coaching requires opt-in.";
+    if (coachSettings.provider === "ollama" && !coachSettings.enabled && (!localStorage.getItem("tank-coach-preferences") || ["qwen2.5-coder:1.5b", "qwen2.5-coder:3b"].includes(coachSettings.model))) {
+      coachSettings.endpoint = config.endpoint;
+      coachSettings.model = config.model;
+    }
+  }).catch(() => {
+  });
   const initial = selectedUnit();
   selectedId = initial.id;
   commands = new Set((initial.instruction ? initial.commands : unlocked(initial)).filter((c) => unlocked(initial).includes(c)));
