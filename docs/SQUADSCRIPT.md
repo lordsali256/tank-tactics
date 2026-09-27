@@ -12,6 +12,8 @@ This is a restricted Python interpreter, not full CPython. Define exactly **def 
 
 Scripts are limited to 3000 characters, 120 nonempty lines, six nesting levels and 240 interpreter steps per tick. Invalid scripts cannot replace saved programs. Scripts request fixed combat actions; they cannot set stats, spawn units, grant credits or alter inventories. Online units, tiers, gear and credits are server-owned. Practice saves on a player's own device remain editable; this does not grant online possessions. Anonymous accounts are not protection against players creating multiple accounts.
 
+Python comparison chains work normally: **0.25 < unit.hp_ratio < 0.75** means health is between 25% and 75%, excluding the endpoints. They evaluate intermediate sensors once and stop after a failed comparison. Literal argument mistakes, such as unit.focus("closest"), unit.hold_range("255") or unit.protect("tank-0"), are rejected when saving. Use documented option strings, numeric distances, and real callsigns.
+
 ## Orders and priority
 
 The game evaluates tick once per simulation step. Each unit's own script runs first, then the optional squad script runs for that same unit. Later active orders have priority. One star keeps the latest three orders, two stars five, three stars seven. Opposing settings use the later setting. Unit-specific calls affect only the matching type. Conditional inactive branches consume no slots. Combining three of a kind increases tier. Healing never revives dead units.

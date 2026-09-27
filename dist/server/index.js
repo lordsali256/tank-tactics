@@ -2869,8 +2869,17 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       function parse(min) {
         let left = atom();
         while (precedence[tokens[at]] >= min) {
-          const op = tokens[at++], right = parse(precedence[op] + 1);
-          left = { op, left, right };
+          if (precedence[tokens[at]] === 3) {
+            const values = [left], operators = [];
+            do {
+              operators.push(tokens[at++]);
+              values.push(parse(4));
+            } while (precedence[tokens[at]] === 3);
+            left = { chain: values, operators };
+          } else {
+            const op = tokens[at++], right = parse(precedence[op] + 1);
+            left = { op, left, right };
+          }
         }
         return left;
       }
@@ -2882,7 +2891,20 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       if (cache.has(text)) return cache.get(text);
       const errors = [], body = [], names2 = /* @__PURE__ */ new Set(), calls = [];
       try {
-        let checkExpr = function(tree) {
+        let checkLiteralArgs = function(name, args) {
+          const types2 = ["tank", "infantry", "rocket", "scout", "sniper", "medic", "artillery", "engineer", "helicopter", "boat"], enums = { focus: ["nearest", "weakest", "leader"], stance: ["balanced", "rush", "sniper"], "unit.is_type": types2, "squad.has_type": types2, "squad.count_type": types2, "unit.map_is": ["urban", "canyon", "volcanic", "coast"] }, strings = /* @__PURE__ */ new Set(["focus", "stance", "follow", "protect", "flank", "unit.distance_to", "unit.ally_health", "unit.ally_alive", "unit.ability_ready", "unit.map_is", "unit.is_type", "squad.has_type", "squad.count_type"]);
+          for (const arg of args) {
+            if (!Object.hasOwn(arg, "literal")) continue;
+            const value2 = arg.literal;
+            if (strings.has(name)) {
+              if (typeof value2 !== "string") throw Error(name + " requires a string argument");
+              if (enums[name] && !enums[name].includes(value2)) throw Error(name + " accepts " + enums[name].join(", "));
+              if (["follow", "protect", "flank", "unit.distance_to", "unit.ally_health", "unit.ally_alive"].includes(name) && !(["follow", "protect", "flank"].includes(name) && value2 === "leader" || new RegExp("^(" + types2.join("|") + ")-[1-9][0-9]?$").test(value2))) throw Error(name + " needs a valid callsign");
+              if (name === "unit.ability_ready" && !methods2.has(value2)) throw Error("Unknown ability " + value2);
+            } else if (typeof value2 !== "number" || !Number.isFinite(value2)) throw Error(name + " requires a numeric argument");
+          }
+        }, checkExpr = function(tree) {
+          if (tree.chain) for (const value2 of tree.chain) checkExpr(value2);
           if (tree.name) {
             if (tree.name.includes(".")) {
               if (!sensors2.has(tree.name)) throw Error("Unknown read-only sensor " + tree.name);
@@ -2893,6 +2915,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
             const zero = /* @__PURE__ */ new Set(["unit.health_drop_distance", "unit.ammo_drop_distance", "unit.shield_drop_distance", "unit.boost_drop_distance", "unit.nearest_cover_distance", "unit.enemy_shield", "unit.enemy_health", "unit.has_ammo", "unit.can_fire"]);
             const expected = zero.has(tree.call) ? 0 : 1;
             if (tree.args.length !== expected) throw Error(tree.call + " needs " + expected + " arguments");
+            checkLiteralArgs(tree.call, tree.args);
             for (const a2 of tree.args) checkExpr(a2);
           }
           if (tree.value) checkExpr(tree.value);
@@ -2944,6 +2967,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
             const ast = expression("unit." + action[1] + "(" + action[2] + ")");
             const count = action[1] === "move_to" ? 2 : ["hold_range", "focus", "follow", "protect", "flank", "stance", "retreat_below"].includes(action[1]) ? 1 : 0;
             if (ast.args.length !== count) throw Error(action[1] + " needs " + count + " arguments");
+            checkLiteralArgs(action[1], ast.args);
             for (const a2 of ast.args) checkExpr(a2);
             calls.push(action[1]);
             result2.push({ kind: "action", method: action[1], args: ast.args });
@@ -2978,6 +3002,15 @@ function createEngine(a, b, map, initialSeed, restored = null) {
         if (Object.hasOwn(ast, "literal")) return ast.literal;
         if (ast.name) return ast.name.includes(".") ? env[ast.name] : locals[ast.name];
         if (ast.call) return query(ast.call, ast.args.map(read));
+        if (ast.chain) {
+          let a3 = read(ast.chain[0]);
+          for (let i = 0; i < ast.operators.length; i++) {
+            const b3 = read(ast.chain[i + 1]), op = ast.operators[i], valid = op === "==" ? a3 === b3 : op === "!=" ? a3 !== b3 : op === "<" ? a3 < b3 : op === ">" ? a3 > b3 : op === "<=" ? a3 <= b3 : a3 >= b3;
+            if (!valid) return false;
+            a3 = b3;
+          }
+          return true;
+        }
         if (ast.op === "not") return !read(ast.value);
         if (ast.op === "neg") return -read(ast.value);
         const a2 = read(ast.left);
@@ -3898,8 +3931,17 @@ var PythonUnit = /* @__PURE__ */ (() => {
     function parse(min) {
       let left = atom();
       while (precedence[tokens[at]] >= min) {
-        const op = tokens[at++], right = parse(precedence[op] + 1);
-        left = { op, left, right };
+        if (precedence[tokens[at]] === 3) {
+          const values = [left], operators = [];
+          do {
+            operators.push(tokens[at++]);
+            values.push(parse(4));
+          } while (precedence[tokens[at]] === 3);
+          left = { chain: values, operators };
+        } else {
+          const op = tokens[at++], right = parse(precedence[op] + 1);
+          left = { op, left, right };
+        }
       }
       return left;
     }
@@ -3911,7 +3953,20 @@ var PythonUnit = /* @__PURE__ */ (() => {
     if (cache.has(text)) return cache.get(text);
     const errors = [], body = [], names2 = /* @__PURE__ */ new Set(), calls = [];
     try {
-      let checkExpr = function(tree) {
+      let checkLiteralArgs = function(name, args) {
+        const types2 = ["tank", "infantry", "rocket", "scout", "sniper", "medic", "artillery", "engineer", "helicopter", "boat"], enums = { focus: ["nearest", "weakest", "leader"], stance: ["balanced", "rush", "sniper"], "unit.is_type": types2, "squad.has_type": types2, "squad.count_type": types2, "unit.map_is": ["urban", "canyon", "volcanic", "coast"] }, strings = /* @__PURE__ */ new Set(["focus", "stance", "follow", "protect", "flank", "unit.distance_to", "unit.ally_health", "unit.ally_alive", "unit.ability_ready", "unit.map_is", "unit.is_type", "squad.has_type", "squad.count_type"]);
+        for (const arg of args) {
+          if (!Object.hasOwn(arg, "literal")) continue;
+          const value2 = arg.literal;
+          if (strings.has(name)) {
+            if (typeof value2 !== "string") throw Error(name + " requires a string argument");
+            if (enums[name] && !enums[name].includes(value2)) throw Error(name + " accepts " + enums[name].join(", "));
+            if (["follow", "protect", "flank", "unit.distance_to", "unit.ally_health", "unit.ally_alive"].includes(name) && !(["follow", "protect", "flank"].includes(name) && value2 === "leader" || new RegExp("^(" + types2.join("|") + ")-[1-9][0-9]?$").test(value2))) throw Error(name + " needs a valid callsign");
+            if (name === "unit.ability_ready" && !methods2.has(value2)) throw Error("Unknown ability " + value2);
+          } else if (typeof value2 !== "number" || !Number.isFinite(value2)) throw Error(name + " requires a numeric argument");
+        }
+      }, checkExpr = function(tree) {
+        if (tree.chain) for (const value2 of tree.chain) checkExpr(value2);
         if (tree.name) {
           if (tree.name.includes(".")) {
             if (!sensors2.has(tree.name)) throw Error("Unknown read-only sensor " + tree.name);
@@ -3922,6 +3977,7 @@ var PythonUnit = /* @__PURE__ */ (() => {
           const zero = /* @__PURE__ */ new Set(["unit.health_drop_distance", "unit.ammo_drop_distance", "unit.shield_drop_distance", "unit.boost_drop_distance", "unit.nearest_cover_distance", "unit.enemy_shield", "unit.enemy_health", "unit.has_ammo", "unit.can_fire"]);
           const expected = zero.has(tree.call) ? 0 : 1;
           if (tree.args.length !== expected) throw Error(tree.call + " needs " + expected + " arguments");
+          checkLiteralArgs(tree.call, tree.args);
           for (const a of tree.args) checkExpr(a);
         }
         if (tree.value) checkExpr(tree.value);
@@ -3973,6 +4029,7 @@ var PythonUnit = /* @__PURE__ */ (() => {
           const ast = expression("unit." + action[1] + "(" + action[2] + ")");
           const count = action[1] === "move_to" ? 2 : ["hold_range", "focus", "follow", "protect", "flank", "stance", "retreat_below"].includes(action[1]) ? 1 : 0;
           if (ast.args.length !== count) throw Error(action[1] + " needs " + count + " arguments");
+          checkLiteralArgs(action[1], ast.args);
           for (const a of ast.args) checkExpr(a);
           calls.push(action[1]);
           result2.push({ kind: "action", method: action[1], args: ast.args });
@@ -4007,6 +4064,15 @@ var PythonUnit = /* @__PURE__ */ (() => {
       if (Object.hasOwn(ast, "literal")) return ast.literal;
       if (ast.name) return ast.name.includes(".") ? env[ast.name] : locals[ast.name];
       if (ast.call) return query(ast.call, ast.args.map(read));
+      if (ast.chain) {
+        let a2 = read(ast.chain[0]);
+        for (let i = 0; i < ast.operators.length; i++) {
+          const b2 = read(ast.chain[i + 1]), op = ast.operators[i], valid = op === "==" ? a2 === b2 : op === "!=" ? a2 !== b2 : op === "<" ? a2 < b2 : op === ">" ? a2 > b2 : op === "<=" ? a2 <= b2 : a2 >= b2;
+          if (!valid) return false;
+          a2 = b2;
+        }
+        return true;
+      }
       if (ast.op === "not") return !read(ast.value);
       if (ast.op === "neg") return -read(ast.value);
       const a = read(ast.left);
