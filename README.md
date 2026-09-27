@@ -12,6 +12,8 @@ The LAN deployment lives at `/mnt/serverdata/docker/testing-environment/tank-tac
 
 Campaign progress, scripts and coach preferences live in each browser's local storage. Browsers treat the former `127.0.0.1` address and the Docker address as separate saves; the PC save remains available at its old address. The multiplayer database is portable and can be migrated separately. Docker includes an Ollama service bound to server loopback. Install the default optional coach with `docker compose exec ollama ollama pull qwen2.5-coder:1.5b`. The 7B model can also be installed, but takes longer on this CPU server. Google AI Studio and OpenAI API coaching require explicit opt-in and player supplied keys.
 
+Deployment check on September 27: gameplay, documentation, leaderboard and persistent database passed. Models 1.5B, 3B and 7B are installed. Full-guide coach requests timed out on the server CPU, including a cached-guide 1.5B request with a five-minute limit. Local auto-coaching is therefore not verified on this host. Coaching stays off by default; copy/paste scripts and gameplay work without it. Provider protocol tests passed with test responses, but no paid provider account has been exercised.
+
 ## Play and scripts
 
 Deploy sits above the battlefield and stays accessible while scrolling. No model connection is required. Ten unit types unlock gradually, including helicopters at Round 6. AI damage is reduced 20%; enemy count grows every four rounds and tiers every eight.
