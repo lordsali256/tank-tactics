@@ -3969,16 +3969,21 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     closeFieldBase();
     deploy();
   };
-  $("depotArmory").onclick = () => {
-    renderLoadout();
-    $("loadoutDialog").showModal();
+  function openDepotPanel(id, prepare) {
+    hideUnitTooltip();
+    const panel = $(id);
+    document.body?.append(panel);
+    prepare?.();
+    if (!panel.open) panel.showModal();
+  }
+  $("depotArmory").onclick = () => openDepotPanel("loadoutDialog", renderLoadout);
+  $("depotStore").onclick = () => openDepotPanel("storeDialog", renderStore);
+  $("depotScripts").onclick = () => openDepotPanel("scriptsDialog", workshopChoices);
+  $("depotCoach").onclick = () => {
+    const panel = $("coachDialog");
+    document.body?.append(panel);
+    openCoachSettings();
   };
-  $("depotStore").onclick = () => {
-    renderStore();
-    $("storeDialog").showModal();
-  };
-  $("depotScripts").onclick = () => $("scriptsButton").onclick();
-  $("depotCoach").onclick = () => openCoachSettings();
   renderLevelRewards = function() {
     if (!levelReward) return;
     const root = $("rewards");

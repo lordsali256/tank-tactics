@@ -208,6 +208,7 @@ function renderBase(){const root=$('baseSites');root.replaceChildren();$('baseBa
 function fieldBaseSupport(t,dt){if(t.team!=='player'||t.hp<=0)return;for(const b of campaign.base||[]){if(Math.hypot(t.x-b.x,t.y-b.y)>110)continue;if(b.kind==='repair')t.hp=Math.min(t.maxHp,t.hp+2*b.tier*dt);if(b.kind==='ammo'&&elapsed>=(t.supplyAt||0)){t.reserve=Math.min(250,t.reserve+8*b.tier);t.supplyAt=elapsed+5}}}
 const tacticalDraw=draw;draw=function(){tacticalDraw();if(campaign.view==='3d'||onlinePlaying)return;for(const b of campaign.base||[]){ctx.fillStyle=b.kind==='repair'?'#68bfc0':b.kind==='ammo'?'#e8b66d':'#526849';ctx.fillRect(b.x-14,b.y-14,28,28);ctx.fillStyle='#08170d';ctx.font='bold 18px sans-serif';ctx.textAlign='center';ctx.fillText(b.kind==='repair'?'+':b.kind==='ammo'?'A':'W',b.x,b.y+6)}};
 $('baseButton').onclick=()=>{renderBase();$('baseDialog').showModal()};$('closeBase').onclick=()=>$('baseDialog').close();
+
 // SQUAD_LANGUAGE_START
 // Fixed points; callers supply authoritative combat state online.
 function battlePoints(win,units,team='player'){
@@ -471,7 +472,8 @@ function openFieldBase(){if(mode==='running'||compiling)return;if(autoRestartTim
 function closeFieldBase(){hideUnitTooltip();$('fieldBaseScreen').hidden=true;$('battleShell').hidden=false;inFieldBase=false}
 $('baseButton').onclick=openFieldBase;$('leaveDepot').onclick=()=>{if(mode==='won'&&levelReward){$('depotMessage').textContent='Claim the victory upgrade and deploy from Field Base.';return}closeFieldBase()};
 const depotCompleteRewards=completeLevelRewards;$('depotDeploy').onclick=()=>{if($('depotDeploy').disabled)return;if(mode==='won')depotCompleteRewards();closeFieldBase();deploy()};
-$('depotArmory').onclick=()=>{renderLoadout();$('loadoutDialog').showModal()};$('depotStore').onclick=()=>{renderStore();$('storeDialog').showModal()};$('depotScripts').onclick=()=>$('scriptsButton').onclick();$('depotCoach').onclick=()=>openCoachSettings();
+function openDepotPanel(id,prepare){hideUnitTooltip();const panel=$(id);document.body?.append(panel);prepare?.();if(!panel.open)panel.showModal()}
+$('depotArmory').onclick=()=>openDepotPanel('loadoutDialog',renderLoadout);$('depotStore').onclick=()=>openDepotPanel('storeDialog',renderStore);$('depotScripts').onclick=()=>openDepotPanel('scriptsDialog',workshopChoices);$('depotCoach').onclick=()=>{const panel=$('coachDialog');document.body?.append(panel);openCoachSettings()};
 renderLevelRewards=function(){if(!levelReward)return;const root=$('rewards');root.replaceChildren();$('rewardTitle').textContent='Victory · Choose your recruit';if(levelReward.unit){const p=document.createElement('p');p.textContent=levelReward.unit;root.append(p)}else for(const type of levelReward.offerTypes)root.append(rewardButton('Recruit '+unitTypes[type].name+' ★',roster.length<economy.slots?'Add to squad · combine three matching copies':'Squad full · waits in reserve',()=>chooseReward({unitType:type,action:'add'})));const p=document.createElement('p');p.textContent='Your permanent upgrade is waiting at Field Base.';root.append(p);$('claimLevel').disabled=!levelReward.unit;$('claimLevel').textContent='Return to Field Base'};
 $('claimLevel').onclick=()=>{if(mode==='won'&&levelReward?.unit)openFieldBase()};
 const depotReward=chooseReward;chooseReward=function(option){depotReward(option);if(inFieldBase)renderBase()};
