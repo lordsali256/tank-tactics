@@ -14,7 +14,7 @@ console.log('Real controls, eight depot upgrades, guarded spending, free victory
 context.AbortController=AbortController;context.URL=URL;
 run(`mode='running';coachSettings.enabled=false;finish(true);if($('rewards').children.some(c=>c.className==='reward'))throw Error('Recruit shown on win screen');$('claimLevel').onclick();if($('depotRecruitChoices').children.length!==3)throw Error('Depot recruit choices missing');if(!$('depotUnits').children[0].children[1].children.some(x=>x.className==='rank-stars'))throw Error('Graphic rank missing');`);
 context.fetch=async()=>({ok:true,json:async()=>({scripts:[{id:run('roster[0].id'),script:'def tick(unit, squad):\n    unit.brace()'}],summary:'Test automatic change',documentation:{characters:22000}})});
-run(`coachSettings.enabled=true;coachSettings.autoApply=true;coachAttemptedReport=null;mode='running';finish(false);`);
+run(`coachSettings.route='server';coachSettings.enabled=true;coachSettings.autoApply=true;coachAttemptedReport=null;mode='running';finish(false);`);
 await new Promise(resolve=>setTimeout(resolve,5));
 assert.equal(run('coachRequest'),null);assert.match(run('scriptChangeText'),/lines added.*scripts updated/);assert.match(run('roster[0].unitScript'),/brace/);assert.match(run('coachActivity'),/Validated scripts/);
 context.fetch=async()=>({ok:true,json:async()=>({scripts:[],summary:'Already suitable',documentation:{characters:22000}})});await run('requestCoach()');assert.match(run('scriptChangeText'),/No script changes/);

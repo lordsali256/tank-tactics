@@ -4,7 +4,7 @@ import vm from 'node:vm';
 fs.mkdirSync('dist/server',{recursive:true});
 const renderer=await build({entryPoints:['client/arena-3d.js'],bundle:true,format:'iife',platform:'browser',minify:true,write:false});
 let page=fs.readFileSync('dist/play.html','utf8').replace(/\n<!-- WEBGL_RENDERER -->[\s\S]*?<!-- END_WEBGL_RENDERER -->/,'');
-const language=fs.readFileSync('cloud/scoring.mjs','utf8').replace('export function','function')+'\n'+fs.readFileSync('client/squad-language.js','utf8')+'\n'+fs.readFileSync('client/python-parser.js','utf8')+'\n'+fs.readFileSync('client/python-runtime.js','utf8')+'\n'+fs.readFileSync('client/script-workshop.js','utf8')+'\n'+fs.readFileSync('client/field-depot.js','utf8')+'\n'+fs.readFileSync('client/battle-flow.js','utf8');
+const language=fs.readFileSync('cloud/scoring.mjs','utf8').replace('export function','function')+'\n'+fs.readFileSync('client/squad-language.js','utf8')+'\n'+fs.readFileSync('client/python-parser.js','utf8')+'\n'+fs.readFileSync('client/python-runtime.js','utf8')+'\n'+fs.readFileSync('client/script-workshop.js','utf8')+'\n'+fs.readFileSync('client/field-depot.js','utf8')+'\n'+fs.readFileSync('client/battle-flow.js','utf8')+'\n'+fs.readFileSync('client/model-connector.js','utf8');
 page=page.replace(/<!-- FIELD_DEPOT_CSS -->[\s\S]*?<!-- END_FIELD_DEPOT_CSS -->/,()=> '<!-- FIELD_DEPOT_CSS --><style>'+fs.readFileSync('client/field-depot.css','utf8')+'</style><!-- END_FIELD_DEPOT_CSS -->');
 page=page.replace(/<!-- FIELD_DEPOT_HTML -->[\s\S]*?<!-- END_FIELD_DEPOT_HTML -->/,()=> '<!-- FIELD_DEPOT_HTML -->'+fs.readFileSync('client/field-depot.html','utf8')+'<!-- END_FIELD_DEPOT_HTML -->');
 page=page.replace(/\/\/ SQUAD_LANGUAGE_START[\s\S]*?\/\/ SQUAD_LANGUAGE_END\n?/,'');

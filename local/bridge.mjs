@@ -2,7 +2,8 @@ import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {matchRequest} from './matches.mjs';
-import {generateCoach} from './coach.mjs';
+import {generateCoach,decodeCoachReply} from './coach.mjs';
+import {listModels,modelListRequest} from './model-connections.mjs';
 import {ollamaEndpoint,ollamaLocation} from './ollama-location.mjs';
 const model=process.env.TANK_COACH_MODEL||'qwen3.5:4b', port=8878;
 const publicOrigin=process.env.TANK_PUBLIC_ORIGIN;
@@ -22,7 +23,9 @@ const server=http.createServer(async(req,res)=>{
  if(req.headers.origin&&!allowedOrigins.has(req.headers.origin))return send(403,{error:'Open this game to use its services.'});
  try{
  const pathname=new URL(req.url,'http://localhost').pathname;
- if(pathname==='/api/coach/config'&&req.method==='GET')return send(200,{endpoint:ollamaEndpoint.href,model:process.env.TANK_COACH_MODEL||'qwen2.5-coder:7b',location:ollamaLocation});
+ if(pathname==='/api/coach/models/request'&&req.method==='POST'){let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>5000)return send(413,{error:'Connection settings too large.'})}const input=JSON.parse(raw);if(!['ollama','compatible'].includes(input.provider))return send(400,{error:'Only local APIs support device connections.'});return send(200,modelListRequest(input));}
+ if(['/api/coach/models','/api/coach/prepare','/api/coach/validate'].includes(pathname)&&req.method==='POST'){let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>400000)return send(413,{error:'Model request too large.'})}const input=JSON.parse(raw);if(pathname==='/api/coach/models')return send(200,await listModels(input));if(!['ollama','compatible'].includes(input.provider))return send(400,{error:'Device connections are available for Ollama and compatible local APIs.'});const prepared=await generateCoach(input,{prepareOnly:true});return send(200,pathname==='/api/coach/prepare'?prepared:decodeCoachReply(input.response,prepared));}
+ if(pathname==='/api/coach/config'&&req.method==='GET')return send(200,{endpoint:ollamaEndpoint.href,model:process.env.TANK_COACH_MODEL||'',location:ollamaLocation});
  if(pathname==='/api/coach/reference'&&req.method==='GET')return send(200,{text:await readFile(new URL('../docs/SQUADSCRIPT.md',import.meta.url),'utf8')});
  if(pathname==='/api/coach'&&req.method==='POST'){let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>160000)return send(413,{error:'Battle report too large.'})}const controller=new AbortController();res.on('close',()=>{if(!res.writableEnded)controller.abort()});return send(200,await generateCoach(JSON.parse(raw),{signal:controller.signal}));}
  if(pathname.startsWith('/api/matches'))return send(200,await matchRequest(req,new URL(req.url,'http://localhost')));

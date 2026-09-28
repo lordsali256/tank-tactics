@@ -4149,10 +4149,16 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   function collectBattleReport(win) {
     return { version: 1, round, map: campaign.map, result: win ? "victory" : "defeat", durationSeconds: Math.round(elapsed * 10) / 10, units: battleUnits.map((t) => ({ id: t.id, side: t.team, type: t.type, tier: t.tier, callsign: callsign(t), survived: t.hp > 0, remainingHealth: Math.ceil(t.hp), maximumHealth: t.maxHp, shotsFired: t.reportShots || 0, damageDealt: Math.round(t.reportDamageDealt || 0), damageTaken: Math.round(t.reportDamageTaken || 0), hitEvents: t.reportHits || 0, kills: t.reportKills || 0, reserveAmmo: t.reserve, magazineAmmo: t.ammo, pickups: t.reportPickups || {} })) };
   }
-  let coachSettings = { provider: "ollama", endpoint: "http://127.0.0.1:11434/api/chat", model: "qwen2.5-coder:7b", enabled: false, autoApply: false }, coachApiKey = "";
+  let coachSettings = { provider: "ollama", endpoint: "http://127.0.0.1:11434/api/chat", model: "", route: "device", enabled: false, autoApply: false }, coachApiKey = "";
   try {
     const saved = JSON.parse(localStorage.getItem("tank-coach-preferences"));
-    if (saved) coachSettings = { ...coachSettings, ...saved, enabled: false, autoApply: false };
+    if (saved) {
+      coachSettings = { ...coachSettings, ...saved, enabled: false, autoApply: false };
+      if (coachSettings.endpoint === "http://127.0.0.1:11435/api/chat") {
+        coachSettings.endpoint = "http://127.0.0.1:11434/api/chat";
+        coachSettings.route = "device";
+      }
+    }
   } catch {
   }
   function openCoachSettings() {
@@ -4174,9 +4180,9 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       const url = new URL(endpoint);
       if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) throw Error("Use a valid HTTP endpoint without embedded credentials.");
       if (!model) throw Error("Enter your model name.");
-      coachSettings = { provider: $("coachProvider").value, endpoint, model, enabled: $("coachEnabled").checked, autoApply: $("coachAutoApply").checked };
+      coachSettings = { provider: $("coachProvider").value, endpoint, model, route: $("coachRoute").value, enabled: $("coachEnabled").checked, autoApply: $("coachAutoApply").checked };
       coachApiKey = $("coachKey").value.trim();
-      localStorage.setItem("tank-coach-preferences", JSON.stringify({ provider: coachSettings.provider, endpoint, model }));
+      localStorage.setItem("tank-coach-preferences", JSON.stringify({ provider: coachSettings.provider, endpoint, model, route: coachSettings.route }));
       if (!coachSettings.enabled) {
         coachGeneration++;
         if (coachRequest) coachRequest.abort();
@@ -4393,8 +4399,7 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     setScriptNote("Round " + report.round + " \xB7 Analyzing\u2026 scripts unchanged until validated.");
     renderBase();
     try {
-      const response = await fetch("/api/coach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...coachSettings, key: coachApiKey, report, units: roster.map((u) => ({ id: u.id, type: u.type, tier: u.tier, script: u.unitScript })), squadScript: campaign.orders }), signal: controller.signal }), data = await response.json();
-      if (!response.ok || data.error) throw Error(data.error || "Coach unavailable.");
+      const data = await callChosenCoach({ ...coachSettings, key: coachApiKey, report, units: roster.map((u) => ({ id: u.id, type: u.type, tier: u.tier, script: u.unitScript })), squadScript: campaign.orders }, controller.signal);
       if (generation !== coachGeneration || !coachSettings.enabled) return;
       if (snapshot !== coachSnapshot(ids)) throw Error("Units or scripts changed during analysis. Analyze again.");
       coachDraft = validateCoachDraft(data);
@@ -4610,18 +4615,106 @@ function createEngine(a, b, map, initialSeed, restored = null) {
     }
     campaignResultContinue();
   };
-  let defaultLocalEndpoint = "http://127.0.0.1:11434/api/chat", defaultLocalModel = "qwen2.5-coder:7b";
-  fetch("/api/coach/config").then((r) => r.ok ? r.json() : null).then((config) => {
-    if (!config) return;
-    defaultLocalEndpoint = config.endpoint;
-    defaultLocalModel = config.model;
-    if ($("coachConnectionNote")) $("coachConnectionNote").textContent = config.location + ". Keep that computer and Ollama running. Coaching requires opt-in.";
-    if (coachSettings.provider === "ollama" && !coachSettings.enabled && (!localStorage.getItem("tank-coach-preferences") || ["qwen2.5-coder:1.5b", "qwen2.5-coder:3b"].includes(coachSettings.model))) {
-      coachSettings.endpoint = config.endpoint;
-      coachSettings.model = config.model;
+  async function coachJSON(url, options) {
+    const response = await fetch(url, options);
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      throw Error("Connection did not return JSON. Check the API address.");
     }
-  }).catch(() => {
-  });
+    if (!response.ok || data.error) throw Error(data.error || "Connection returned HTTP " + response.status);
+    return data;
+  }
+  function localCoachProvider(provider) {
+    return ["ollama", "compatible"].includes(provider);
+  }
+  async function callChosenCoach(input, signal) {
+    const post = (data) => ({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data), signal });
+    if (!localCoachProvider(input.provider) || input.route !== "device") return coachJSON("/api/coach", post(input));
+    const prepared = await coachJSON("/api/coach/prepare", post(input));
+    let response;
+    try {
+      response = await fetch(prepared.endpoint, { method: "POST", headers: prepared.headers, body: JSON.stringify(prepared.body), signal: AbortSignal.any([signal, AbortSignal.timeout(3e5)]), redirect: "error" });
+    } catch (e) {
+      if (signal.aborted) throw e;
+      throw Error("Your device could not reach the model. Keep its app running and allow this game origin in the model app. See Connection help.");
+    }
+    if (!response.ok) throw Error("Your model returned HTTP " + response.status + ". Check Connection help and the selected model.");
+    const raw = await response.text();
+    if (raw.length > 12e4) throw Error("Model response too large.");
+    let result;
+    try {
+      result = JSON.parse(raw);
+    } catch {
+      throw Error("Your model did not return JSON.");
+    }
+    return coachJSON("/api/coach/validate", post({ ...input, response: result }));
+  }
+  function connectorInput() {
+    return { provider: $("coachProvider").value, endpoint: $("coachEndpoint").value.trim(), key: $("coachKey").value.trim(), route: $("coachRoute").value };
+  }
+  function connectorHelp() {
+    const provider = $("coachProvider").value, local = localCoachProvider(provider), device = $("coachRoute").value === "device";
+    $("coachRouteWrap").hidden = !local;
+    const origin = window.location?.origin || "http://localhost:8878";
+    $("coachConnectionNote").textContent = !local ? "Provider API \xB7 uses your own API key. Web chatbot accounts use Copy battle + full guide." : device ? "Connects directly from your browser. localhost means this PC or phone." : "Connects from the game server. localhost means the server; use a private-network IP for another computer.";
+    $("coachSetupHelp").textContent = !local ? "Enter your provider API key, test the connection, and choose a text model. Listing models sends no battle reports." : device ? provider === "ollama" ? "Start Ollama on this device. If the browser blocks the connection, allow only this game origin with OLLAMA_ORIGINS, then quit and reopen Ollama. Windows PowerShell command below. On macOS use launchctl setenv; on Linux set the variable in the Ollama service." : "Start LM Studio or your compatible API. In LM Studio server settings enable CORS and use the API token if authentication is on. Then test the connection." : "Start a model API on the game server, or enter a network address such as http://192.168.1.50:11434 for Ollama. The model app must serve on your local network and its firewall must allow the game server.";
+    $("coachCorsCommand").textContent = local && device && provider === "ollama" ? "[Environment]::SetEnvironmentVariable('OLLAMA_ORIGINS', '" + origin + "', 'User')" : "";
+  }
+  const originalOpenCoach = openCoachSettings;
+  openCoachSettings = function() {
+    originalOpenCoach();
+    $("coachRoute").value = coachSettings.route || "device";
+    connectorHelp();
+  };
+  $("coachButton").onclick = openCoachSettings;
+  $("configureMain").onclick = openCoachSettings;
+  $("coachProvider").onchange = () => {
+    const presets = { ollama: ["http://127.0.0.1:11434/api/chat", ""], compatible: ["http://127.0.0.1:1234/v1/chat/completions", ""], gemini: ["https://generativelanguage.googleapis.com/v1beta", ""], openai: ["https://api.openai.com/v1/responses", ""] };
+    [$("coachEndpoint").value, $("coachModel").value] = presets[$("coachProvider").value];
+    $("coachKey").value = "";
+    $("coachModels").replaceChildren();
+    $("coachTestStatus").textContent = "";
+    connectorHelp();
+  };
+  $("coachRoute").onchange = connectorHelp;
+  $("testCoachConnection").onclick = async () => {
+    const input = connectorInput(), button = $("testCoachConnection");
+    button.disabled = true;
+    $("coachTestStatus").textContent = "Testing connection\u2026 no battle reports sent.";
+    try {
+      let data;
+      if (localCoachProvider(input.provider) && input.route === "device") {
+        const api = await coachJSON("/api/coach/models/request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+        let reply;
+        try {
+          reply = await fetch(api.endpoint, { headers: api.headers, signal: AbortSignal.timeout(8e3), redirect: "error" });
+        } catch {
+          throw Error("Browser connection blocked or model app unavailable. Open Connection help for the app setting to allow this game.");
+        }
+        ;
+        if (!reply.ok) throw Error("Model app returned HTTP " + reply.status + ". Check the address, authentication and Connection help.");
+        const raw = await reply.text();
+        if (raw.length > 1e6) throw Error("Model list too large.");
+        const result = JSON.parse(raw), rows = input.provider === "ollama" ? result.models : result.data;
+        data = { models: [...new Set((rows || []).map((row) => row.name || row.id).filter((id) => typeof id === "string" && id.length <= 120))].slice(0, 100) };
+      } else data = await coachJSON("/api/coach/models", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+      $("coachModels").replaceChildren();
+      for (const id of data.models) {
+        const option = document.createElement("option");
+        option.value = id;
+        $("coachModels").append(option);
+      }
+      if (data.models.length && !data.models.includes($("coachModel").value)) $("coachModel").value = data.models[0];
+      $("coachTestStatus").textContent = data.models.length ? "Connected \xB7 " + data.models.length + " models found. Choose your model below." : "Connected \xB7 no models reported. Load/install a text model, or enter its name.";
+    } catch (e) {
+      $("coachTestStatus").textContent = e.message;
+    } finally {
+      button.disabled = false;
+    }
+  };
+  connectorHelp();
   const initial = selectedUnit();
   selectedId = initial.id;
   commands = new Set((initial.instruction ? initial.commands : unlocked(initial)).filter((c) => unlocked(initial).includes(c)));

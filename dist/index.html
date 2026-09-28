@@ -125,7 +125,7 @@
       <button data-view="systems"><span class="icon">⚙</span> Game systems</button>
       <button data-view="stats"><span class="icon">▥</span> 36 tank stats</button>
     </nav>
-    <div class="sidebar-note"><b>Docker play server</b><p>LAN game: 192.168.1.10:8878. No model is needed to play. The optional local coach uses Qwen2.5-Coder 7B on your PC through a private SSH tunnel. Keep the PC and Ollama running; the slower server-only model is stopped. Google AI Studio, OpenAI API and compatible providers require explicit opt-in. Coaching is off by default.</p></div>
+    <div class="sidebar-note"><b>Docker play server</b><p>LAN game: 192.168.1.10:8878. The optional coach uses each player's chosen Ollama, LM Studio, Google AI Studio, OpenAI API or compatible model. Model setup tests the connection and lists models. Local apps can connect directly from the player's device or through the game server to a private-network address. Battle reports require explicit opt-in; coaching is off by default.</p></div>
   </aside>
   <main>
     <div class="topline"><span>Android game concept <strong> / Live project board</strong></span><div class="top-actions"><a class="primary" href="./play.html">▶ Play prototype</a><button class="ghost" id="exportBtn" title="Download a backup of your board">↓ Export</button><button class="ghost" id="importBtn" title="Restore a board backup">↑ Import</button><button class="primary" id="addBtn">+ Add task</button></div></div>

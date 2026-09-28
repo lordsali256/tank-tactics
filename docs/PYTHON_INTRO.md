@@ -8,13 +8,44 @@ After victory or defeat, a result screen shows the outcome, duration and points.
 
 Hover over units on PC or tap their model/name on a phone for stats. Collection import/export is hidden and remains a future update.
 
-**Optional LLM coach** is available when playing through the local bridge. Select local Ollama, Google AI Studio (Gemini API), OpenAI (Responses API), or another compatible chat API. Enter an endpoint and model, optionally a provider key, then explicitly enable sending battle reports. Nothing is sent by default. Opt-in resets when the page reloads; endpoint/model preferences persist, but keys remain only in memory. HTTP is restricted to loopback; remote providers require HTTPS. For the Docker game, Ollama runs on your PC through a private SSH tunnel. Keep your PC and Ollama running; the settings show the current model location. The default is Qwen2.5-Coder 7B, verified locally with a real battle-report fixture.
+**Optional LLM coach** supports your own Ollama, LM Studio / compatible API, Google AI Studio (Gemini API) or OpenAI (Responses API) model. Test the connection, choose an available model, then explicitly enable sending battle reports and save. Nothing is sent by default. Opt-in resets when the page reloads; endpoint/model/location preferences persist, but keys remain only in memory. Private-network HTTP is supported; public provider endpoints require HTTPS. Each player chooses their own model and location.
 
 The coach receives the grouped function reference, owned units' scripts/types/tiers, optional squad script, and the last battle report: map, round, outcome, duration, shots, damage dealt/taken, hit events, kills, survival, remaining ammo/health and collected pickups. It does not receive your API key as prompt text. Your chosen hosted provider may charge for requests; its normal privacy terms apply. No provider requests happen until opt-in.
 
 Analysis starts automatically at the end of each campaign battle while enabled. The main screen exposes model setup, reanalysis and draft application without opening Menu. A visible note distinguishes analyzing, unapplied drafts, applied scripts and no changes. Added and removed lines are counted with a line comparison, not inferred from the model summary. The complete function guide is loaded by the local server and included in every request; successful replies show its character count.
 
-Valid drafts can be applied manually. **Automatically apply valid scripts** is a separate opt-in. The interpreter validates every returned unit script and optional squad script before any changes; unknown units or invalid actions reject the whole draft. Changing an analyzed unit’s scripts, combining it away, or resetting a run during analysis makes the reply stale. Adding a recruit does not invalidate the surviving units’ draft; new recruits use their starter script until the next analysis. The coach cannot award units, credits, upgrades or equipment. A failed request leaves existing scripts intact. Local Ollama gets one retry for temporary startup errors and stays loaded for fifteen minutes after a request. Hosted requests are not retried automatically. Multiplayer combat and accounts remain server-controlled; the coach is a campaign feature.
+Valid drafts can be applied manually. **Automatically apply valid scripts** is a separate opt-in. The interpreter validates every returned unit script and optional squad script before any changes; unknown units or invalid actions reject the whole draft. Changing an analyzed unit’s scripts, combining it away, or resetting a run during analysis makes the reply stale. Adding a recruit does not invalidate the surviving units’ draft; new recruits use their starter script until the next analysis. The coach cannot award units, credits, upgrades or equipment. A failed request leaves existing scripts intact. Server-routed Ollama gets one retry for temporary startup errors; Ollama stays loaded for fifteen minutes after a request. Direct browser and hosted requests are not retried automatically. Multiplayer combat and accounts remain server-controlled; the coach is a campaign feature.
+
+## Connect your model
+
+1. Open **Model setup** on the main screen. Select your model app or API provider.
+2. For Ollama or LM Studio, choose **This device** or **Game server or local network**. Enter the model API address, not its chat website.
+3. Press **Test connection & find models**. This only lists model names; it sends no battle report and generates no text. Choose a text/chat model your machine or account can run. If the list is empty, load/install a model or enter its name manually.
+4. Enable sending battle reports and save. To use every validated draft automatically, enable the separate application checkbox. Otherwise review and apply drafts yourself.
+
+### Ollama on this device
+
+Use http://127.0.0.1:11434 (the game adds /api/chat). Keep Ollama running. Direct mode connects from the browser, so localhost means the device running that browser. The complete reference and sanitized battle report are prepared by the game server and sent by your browser to your model. The reply returns to the game server for validation before application.
+
+If a browser connection is blocked, open **Connection help** for your exact game origin. Ollama permits additional origins through OLLAMA_ORIGINS. On Windows the game displays a PowerShell command to set it for your user; quit Ollama from its tray icon and reopen it afterward. For the current LAN deployment:
+
+~~~powershell
+[Environment]::SetEnvironmentVariable('OLLAMA_ORIGINS', 'http://192.168.1.10:8878', 'User')
+~~~
+
+On macOS run launchctl setenv OLLAMA_ORIGINS http://192.168.1.10:8878 and restart Ollama. On Linux add Environment="OLLAMA_ORIGINS=http://192.168.1.10:8878" to the Ollama service override, reload systemd and restart the service. Use your actual game origin if it differs. Preserve any existing allowed origins by adding this one to the comma-separated list. Allow browser local-network access if prompted. An HTTPS game may block HTTP model access; use a permitted HTTPS model endpoint or the server route. See the official Ollama FAQ: https://docs.ollama.com/faq.
+
+### LM Studio or a compatible API
+
+Start its API server and use http://127.0.0.1:1234/v1 for LM Studio. The game adds /chat/completions. In LM Studio server settings enable CORS for direct browser connections; supply the API token if authentication is enabled. Load a text model before testing. Compatible APIs should support GET /v1/models and POST /v1/chat/completions. An API without a models listing may still work when you enter its model ID manually. See https://lmstudio.ai/docs/developer/core/server/settings.
+
+### Model on the server or another LAN computer
+
+Select **Game server or local network**. localhost now means the Docker host. To reach your PC use its private-network IP, for example http://192.168.1.50:11434 for Ollama. A phone using localhost cannot reach a PC model. Ollama must be configured to listen on the LAN with OLLAMA_HOST; LM Studio has **Serve on Local Network**. Allow the game server through that machine's firewall. Enable authentication if the model app supports it. Browser CORS is not needed for this route because the game server makes the request. Do not expose a local unauthenticated model API to the public internet. This route does not install any PC helper or require an SSH connection.
+
+### Google AI Studio, OpenAI and other providers
+
+Use your own provider API key. Gemini uses https://generativelanguage.googleapis.com/v1beta and OpenAI uses https://api.openai.com/v1/responses. Other compatible providers use their documented HTTPS base address. Model discovery authenticates to the provider and lists available models; select a text model suitable for your account. Not every listed model supports the required structured text response. Automatic requests go through the game server, include the complete function guide and use your session-only key. Web chatbot logins/subscriptions are separate; use **Copy battle + full guide** when using a chat website. Hosted providers may charge for generated requests.
 
 ## Points and leaderboard
 
