@@ -3841,12 +3841,18 @@ function createEngine(a, b, map, initialSeed, restored = null) {
   function depotUpgradePrice(u, kind) {
     return 80 + 20 * (u.upgrades?.[kind] || 0);
   }
+  function depotMergeCount(unit) {
+    return roster.filter((u) => u.type === unit.type && u.tier === unit.tier).length + (unit.tier === 1 ? economy.reserve[unit.type] || 0 : 0);
+  }
   function depotCombine(unit) {
-    if (mode === "running" || compiling) return;
-    const target = levelReward?.upgradeTarget === unit.id;
+    if (mode === "running" || compiling || unit.tier >= 3 || depotMergeCount(unit) < 3) return;
+    const active = roster.filter((u) => u.type === unit.type && u.tier === unit.tier).length, fromReserve = unit.tier === 1 ? Math.min(3 - active, economy.reserve[unit.type] || 0) : 0, target = levelReward?.upgradeTarget === unit.id;
+    for (let i = 0; i < fromReserve; i++) roster.push(newUnit2(unit.type, 1));
+    if (fromReserve) economy.reserve[unit.type] -= fromReserve;
     depotEdit(() => combineUnits(unit.type, unit.tier));
     if (target && levelReward) levelReward.upgradeTarget = selectedId;
     renderBase();
+    $("depotMessage").textContent = "Combined 3 " + unitTypes[unit.type].name + " units into " + unitTypes[unit.type].name + " " + "\u2605".repeat(unit.tier + 1) + (fromReserve ? " using " + fromReserve + " reserve " + (fromReserve === 1 ? "copy." : "copies.") : ".");
   }
   function depotChooseUnit(id) {
     if (!roster.some((u) => u.id === id)) return;
@@ -3896,9 +3902,10 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       select.textContent = unit.id === selectedId ? "Selected" : "Select to upgrade";
       select.disabled = mode === "running";
       select.onclick = () => depotChooseUnit(unit.id);
-      const combine = document.createElement("button");
-      combine.textContent = "Combine 3 \xB7 upgrade stars";
-      combine.disabled = unit.tier >= 3 || roster.filter((x) => x.type === unit.type && x.tier === unit.tier).length < 3 || mode === "running" || compiling;
+      const combine = document.createElement("button"), copies = depotMergeCount(unit);
+      combine.textContent = unit.tier >= 3 ? "Maximum stars" : copies >= 3 ? "Combine 3 \u2192 " + "\u2605".repeat(unit.tier + 1) : "Combine progress \xB7 " + copies + "/3 matching";
+      combine.title = unit.tier >= 3 ? "This unit is already fully merged." : copies < 3 ? "Collect " + (3 - copies) + " more " + unitTypes[unit.type].name + " " + "\u2605".repeat(unit.tier) + " " + (3 - copies === 1 ? "copy" : "copies") + ". Tier-one reserve copies count." : "Merge three matching units into one stronger unit.";
+      combine.disabled = unit.tier >= 3 || copies < 3 || mode === "running" || compiling;
       combine.onclick = () => {
         depotChooseUnit(unit.id);
         depotCombine(unit);
@@ -4308,7 +4315,6 @@ function createEngine(a, b, map, initialSeed, restored = null) {
       const detail = card.children[1];
       detail.textContent = unitTypes[roster[i].type].name + " \xB7 " + capacityFor(roster[i]) + " orders";
       detail.append(rankBadge(roster[i].tier));
-      if (card.children[3]) card.children[3].hidden = card.children[3].disabled;
     }
     const pending = mode === "won" && !!levelReward && !levelReward.unit;
     $("depotRecruitSection").hidden = !pending;
