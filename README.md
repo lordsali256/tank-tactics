@@ -2,19 +2,19 @@
 
 A combined-arms arena roguelite inspired by Robocode. Play on PC or Android. Every run starts with one tank against one AI tank with 120 HP. Hero units remain a future update.
 
-## Play locally first
+## Play on the home server
 
-Run `npm ci`, then `npm start`. Open http://127.0.0.1:8878/play on this PC. The project board is http://127.0.0.1:8878/ and the reference is http://127.0.0.1:8878/functions.html. The default configuration binds to loopback only.
+Tank Tactics runs from `/mnt/serverdata/docker/testing-environment/tank-tactics` on `192.168.1.10`. Open http://192.168.1.10:8878/play to play, http://192.168.1.10:8878/ for the project board, and http://192.168.1.10:8878/functions.html for the reference. Do not run a separate PC-local copy.
 
 ## Kandev and other coding agents
 
 The repository includes [AGENTS.md](AGENTS.md) with its architecture, generated-file rules, product constraints, and verification commands. Add this repository to Kandev and use `npm run verify` as the standard build and regression check. No Codex-specific hosting configuration or private Git remote is required.
 
-## Docker on the home server
+## Deploy with Docker
 
-Copy `.env.example` to `.env`, set `TANK_BIND_HOST` to the server's LAN address, and set `TANK_PUBLIC_ORIGIN` to its full game URL. Then run `docker compose up -d --build`. The current home-server deployment uses `/mnt/serverdata/docker/testing-environment/tank-tactics` and `http://192.168.1.10:8878`. The SQLite multiplayer database persists in `./data/arena.sqlite`; keep `data/` when rebuilding. `docker compose ps` shows health and `docker compose logs --tail=100` shows errors.
+Clone or update the repository at `/mnt/serverdata/docker/testing-environment/tank-tactics`, copy `.env.example` to `.env`, and run `docker compose up -d --build` from that directory. The checked-in defaults bind the game to `192.168.1.10` and publish `http://192.168.1.10:8878`. The SQLite multiplayer database persists in `./data/arena.sqlite`; keep `data/` when rebuilding. `docker compose ps` shows health and `docker compose logs --tail=100` shows errors.
 
-Campaign progress, scripts and coach preferences live in each browser's local storage. Browsers treat the former `127.0.0.1` address and the Docker address as separate saves; the PC save remains available at its old address. The multiplayer database is portable and can be migrated separately. No model connection is required to play. The server-only Ollama service is retained under the optional `server-ai` Compose profile; it is stopped by default.
+Campaign progress, scripts and coach preferences live in each browser's local storage under the `http://192.168.1.10:8878` origin. Data previously saved under a `127.0.0.1` origin is separate. The multiplayer database is portable and can be migrated separately. No model connection is required to play. The server-only Ollama service is retained under the optional `server-ai` Compose profile; it is stopped by default.
 
 ## Connect your own LLM
 

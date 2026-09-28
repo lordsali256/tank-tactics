@@ -31,7 +31,7 @@ npm run verify
 
 `npm run verify` builds the game and runs the self-contained regression suite. Run `npm run test:matches` separately while `npm start` is running when multiplayer behavior changes.
 
-Start the local game with `npm start`, then open `http://127.0.0.1:8878/play`. The project board is at the root URL and the script reference is at `/functions.html`.
+The canonical deployment is `/mnt/serverdata/docker/testing-environment/tank-tactics` on `192.168.1.10`. Use Docker there and open `http://192.168.1.10:8878/play`. The project board is at the root URL and the script reference is at `/functions.html`. Do not create a separate PC-local deployment.
 
 ## Product constraints
 

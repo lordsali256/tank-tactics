@@ -49,5 +49,5 @@ const server=http.createServer(async(req,res)=>{
  const body=await readFile(fileURLToPath(new URL('../dist/'+files[pathname],import.meta.url)));res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});res.end(body);
  }catch(e){send(503,{error:e.name==='TimeoutError'?'Local model timed out.':e.message});}
 });
-const bindHost=process.env.TANK_BIND_HOST||'127.0.0.1';
+const bindHost=process.env.TANK_BIND_HOST||'192.168.1.10';
 server.listen(port,bindHost,()=>console.log(`Tank Tactics: ${publicOrigin||`http://${bindHost}:${port}`}/play · ${model}`));
