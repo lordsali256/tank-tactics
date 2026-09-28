@@ -1,3 +1,13 @@
 android/build/
 local/*.log
 node_modules/
+data/
+ollama/
+.env
+.env.*
+*.sqlite
+*.sqlite3
+*.db
+*.apk
+deploy.tar
+*.tar.gz
