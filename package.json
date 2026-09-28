@@ -4,13 +4,16 @@
   "description": "An Android multiplayer roguelite concept inspired by Robocode. The companion project board is in `dist/index.html`, and a playable phone-friendly browser prototype is in `dist/play.html`.",
   "main": "index.js",
   "scripts": {
+    "start": "node local/bridge.mjs",
     "build": "node local/build-cloud.mjs",
     "test": "node local/combat.test.mjs",
+    "test:unit": "node local/combat.test.mjs && node local/arena.test.mjs && node local/arena-models.test.mjs && node local/squad-language.test.mjs && node local/workshop.test.mjs && node local/coach.test.mjs && node local/model-connections.test.mjs && node local/depot.test.mjs && node local/cloud.test.mjs && node local/python.test.mjs",
+    "verify": "npm run build && npm run test:unit",
     "test:matches": "node local/matches.test.mjs"
   },
   "repository": {
     "type": "git",
-    "url": "https://git.chatgpt-team.site/491b670b-b507-4006-96f6-8dee3fe052d2/appgprj_6ab70b1f4348819195fa2efe2847912c.git"
+    "url": "https://github.com/lordsali256/tank-tactics.git"
   },
   "keywords": [],
   "author": "",
