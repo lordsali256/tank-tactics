@@ -10,12 +10,14 @@ assert.throws(()=>modelEndpoint({provider:'ollama',endpoint:'http://public.examp
 assert.equal(modelEndpoint({provider:'compatible',endpoint:'http://localhost:1234/v1'}),'http://localhost:1234/v1/chat/completions');
 assert.equal(modelEndpoint({provider:'compatible',endpoint:'https://api.example/v1'}),'https://api.example/v1/chat/completions');
 assert.equal(modelListRequest({provider:'gemini',endpoint:'https://generativelanguage.googleapis.com/v1beta',key:'fixture'}).headers['x-goog-api-key'],'fixture');
+assert.equal(modelEndpoint({provider:'gemini',endpoint:'https://generativelanguage.googleapis.com/v1beta/',model:'gemini-test'}),'https://generativelanguage.googleapis.com/v1beta/models/gemini-test:generateContent');
 assert.equal(modelListRequest({provider:'openai',endpoint:'https://api.openai.com/v1/responses',key:'fixture'}).endpoint,'https://api.openai.com/v1/models');
 assert.deepEqual(modelNames({models:[{name:'models/chat',supportedGenerationMethods:['generateContent']},{name:'embed',supportedGenerationMethods:['embedContent']}]},'gemini'),['chat']);
 
 const requests=[],model=http.createServer((req,res)=>{requests.push({method:req.method,path:req.url});res.setHeader('Content-Type','application/json');res.end(JSON.stringify({models:[{name:'player-model'},{name:'player-model'}]}))});
 await new Promise(resolve=>model.listen(0,'127.0.0.1',resolve));
 try{assert.deepEqual(await listModels({provider:'ollama',endpoint:'http://127.0.0.1:'+model.address().port,key:''}),{models:['player-model']});assert.deepEqual(requests,[{method:'GET',path:'/api/tags'}])}finally{await new Promise(resolve=>model.close(resolve))}
+await assert.rejects(()=>listModels({provider:'gemini',endpoint:'https://generativelanguage.googleapis.com/v1beta',key:'bad-key'},{fetch:async()=>new Response(JSON.stringify({error:{message:'API key not valid. Please pass a valid API key.'}}),{status:400})}),/Google AI Studio returned HTTP 400.*API key not valid/);
 
 const nodes=new Map(),node=()=>({value:'',textContent:'',children:[],replaceChildren(){this.children=[]},append(x){this.children.push(x)}}),get=id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id)};
 get('coachProvider').value='ollama';get('coachRoute').value='device';get('coachEndpoint').value='http://localhost:11434';
