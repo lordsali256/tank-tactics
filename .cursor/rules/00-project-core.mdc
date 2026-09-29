@@ -1,0 +1,28 @@
+---
+description: Tank Tactics goals, layout, and non-negotiable constraints for every agent session
+alwaysApply: true
+---
+
+# Tank Tactics - Core Context
+
+Combined-arms arena roguelite for browser and Android. A run starts with one player tank versus one AI tank at 120 HP. Players paste a restricted Python subset for individual unit scripts and an optional squad script. Hero units are future work only.
+
+## Layout
+
+- `client/` - browser game, UI, combat renderer, scripts, styles
+- `local/` - local server, multiplayer, model connectors, build scripts, tests
+- `cloud/` - server worker and Python policy
+- `drizzle/` - append-only database migrations
+- `dist/` - generated output, committed with source changes (never hand-edit)
+- `android/` - Android wrapper and build scripts
+- `docs/` - scripting reference sources
+
+## Non-negotiable product constraints
+
+- The first battle stays one player tank versus one AI tank at 120 HP.
+- Scripted Python is a bounded data subset. It must never execute arbitrary Python or grant units, gear, upgrades, score, or resources.
+- Model connections are optional and opt-in. Provider keys stay in memory; never commit, log, or include them in prompts.
+- Preserve mobile usability and verify controls at narrow phone widths when changing UI.
+- Keep hero units on the roadmap unless the product owner changes that decision.
+
+`AGENTS.md` holds the full guide. Read it before large changes.

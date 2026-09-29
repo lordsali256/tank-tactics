@@ -1,0 +1,27 @@
+---
+description: Required build and verification commands before committing or claiming success
+alwaysApply: true
+---
+
+# Verify Before You Commit
+
+Run the project's own checks. Never claim a change works without running them.
+
+```sh
+npm ci            # install exact dependencies
+npm run verify    # builds the game, then runs the self-contained regression suite
+```
+
+When multiplayer behavior changes, also run the live suite against a running server:
+
+```sh
+npm start                 # terminal 1
+node local/matches.test.mjs   # terminal 2
+```
+
+## Rules
+
+- Run `npm run verify` after any change to `local/`, `client/`, or `cloud/`.
+- If build output changes, regenerate and commit it with the source change.
+- Add a regression test for combat, economy, authorization, or persistence bugs when practical.
+- Report the exact command and its result instead of summarizing from memory.

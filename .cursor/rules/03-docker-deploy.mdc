@@ -1,0 +1,23 @@
+---
+description: Docker and home-server deployment conventions
+globs: compose.yaml,Dockerfile,.dockerignore,.env.example
+alwaysApply: false
+---
+
+# Docker Deployment
+
+- Target: the Linux home server at `192.168.1.10`, Docker Compose, host networking.
+- Deploy path: `/mnt/serverdata/docker/testing-environment/tank-tactics`.
+- Public game URL: `http://192.168.1.10:8878`.
+
+## Env and data
+
+- `.env` is local only. Copy `.env.example`, set `TANK_BIND_HOST` to the server's LAN address and `TANK_PUBLIC_ORIGIN` to the full game URL. Never commit `.env`.
+- Keep `data/` during rebuilds; it holds `data/arena.sqlite`.
+- Ollama is opt-in via the `server-ai` Compose profile and stopped by default.
+
+## Safety
+
+- Keep `no-new-privileges:true` and the healthcheck intact.
+- Verify with `docker compose ps` and `docker compose logs --tail=100`.
+- Rebuild with `docker compose up -d --build`.

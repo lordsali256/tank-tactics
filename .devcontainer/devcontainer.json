@@ -1,0 +1,23 @@
+// For format details, see https://aka.ms/devcontainer.json
+// Node 24 matches the production Dockerfile and the CI runner.
+{
+  "name": "Tank Tactics Dev",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:24-bookworm",
+  "postCreateCommand": "npm ci",
+  "forwardPorts": [8878],
+  "portsAttributes": {
+    "8878": {
+      "label": "Tank Tactics",
+      "onAutoForward": "notify"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "GitHub.vscode-pull-request-github",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  },
+  "remoteUser": "node"
+}

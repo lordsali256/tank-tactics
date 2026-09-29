@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build and regression suite
+        run: npm run verify
+
+      - name: Fail if committed build output is stale
+        run: |
+          if ! git diff --quiet -- dist; then
+            echo "::error::dist/ is stale. Run 'npm run build' locally and commit the result."
+            git diff --stat -- dist
+            exit 1
+          fi

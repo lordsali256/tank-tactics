@@ -1,0 +1,18 @@
+---
+description: How to change generated output without hand-editing it
+globs: dist/**,cloud/python-policy.mjs
+alwaysApply: false
+---
+
+# Generated Files
+
+`dist/**` and `cloud/python-policy.mjs` are generated. Do not hand-edit them.
+
+Change their source, then regenerate:
+
+```sh
+node local/build-function-docs.mjs
+npm run build
+```
+
+Commit regenerated output together with the source change so the two never drift.

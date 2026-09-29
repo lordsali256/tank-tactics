@@ -1,0 +1,24 @@
+{
+  "// Team-shared settings. Keep machine-specific and secret values out of this file.": "",
+  "files.eol": "\n",
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "editor.formatOnSave": false,
+  "editor.tabSize": 2,
+  "editor.rulers": [100],
+  "search.exclude": {
+    "dist/": true,
+    "node_modules/": true,
+    "android/build/": true,
+    "ollama/": true,
+    "data/": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/data/**": true,
+    "**/ollama/**": true
+  },
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "docker.compose.command": "docker compose"
+}

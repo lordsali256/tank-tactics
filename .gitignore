@@ -6,6 +6,7 @@ ollama/
 .env
 .env.*
 !.env.example
+.cursor/mcp.json
 *.sqlite
 *.sqlite3
 *.db

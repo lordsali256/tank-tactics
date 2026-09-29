@@ -1,0 +1,12 @@
+{
+  "// Copy to mcp.json and add real values. Do not commit secrets.": "",
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "REPLACE_WITH_TOKEN"
+      }
+    }
+  }
+}
